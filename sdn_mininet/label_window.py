@@ -58,7 +58,7 @@ def label_window(file: str, start: str | None, end: str | None,
         mask = (df["timestamp"] >= t_start) & (df["timestamp"] <= t_end)
         n_match = mask.sum()
         
-        print(f"[Label] Time window: {start} → {end}")
+        print(f"[Label] Time window: {start} -> {end}")
         print(f"[Label] Matched {n_match:,} rows out of {len(df):,}")
 
     # Apply the label
