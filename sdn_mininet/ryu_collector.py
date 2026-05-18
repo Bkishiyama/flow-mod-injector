@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 #!/usr/bin/env python3
 """
 mininet/ryu_collector.py: Ryu SDN Controller + Flow Stats Collector
@@ -68,7 +70,7 @@ class SDNFlowCollector(app_manager.RyuApp):
         self.monitor_thread = hub.spawn(self._monitor_loop)
         
         self.logger.info("[Collector] SDN Flow Collector started!")
-        self.logger.info(f"           Polling every {POLL_INTERVAL} seconds → {OUTPUT_DIR}/")
+        self.logger.info(f"           Polling every {POLL_INTERVAL} seconds -> {OUTPUT_DIR}/")
 
     
     # Called when a switch connects to the controller
@@ -79,7 +81,7 @@ class SDNFlowCollector(app_manager.RyuApp):
         parser = datapath.ofproto_parser
         
         self.datapaths[datapath.id] = datapath
-        self.logger.info(f"[Collector] Switch connected → dpid={datapath.id}")
+        self.logger.info(f"[Collector] Switch connected -> dpid={datapath.id}")
         
         # Install table-miss flow: send unknown packets to controller
         match = parser.OFPMatch()
@@ -187,7 +189,7 @@ class SDNFlowCollector(app_manager.RyuApp):
 
 
     # Helper Functions
-    # Install a flow entry on the switch."""
+    # Install a flow entry on the switch.
     def _add_flow(self, datapath, priority, match, actions,
                   idle_timeout=30, hard_timeout=0):
         ofproto = datapath.ofproto
@@ -206,38 +208,37 @@ class SDNFlowCollector(app_manager.RyuApp):
         )
         datapath.send_msg(mod)
 
-    #Convert OpenFlow flow stat into a CSV row."""
-    def _stat_to_row(self, stat, dpid, ts) -> dict | None:
-        match = stat.match
-        
-        # Skip non-IP flows (ARP, table-miss, etc.)
-        src_ip = match.get("ipv4_src") or match.get("ipv6_src")
-        dst_ip = match.get("ipv4_dst") or match.get("ipv6_dst")
-        if not src_ip or not dst_ip:
+    #Convert OpenFlow flow stat into a CSV row.
+    def _stat_to_row(self, stat, dpid, ts) -> dict:
+    	"""
+    	Extract counters from an OFPFlowStats entry.
+    	Uses MAC addresses since L2 flows don't have IP match fields.
+    	Skips table-miss entries (priority=0, no src/dst).
+    	"""
+    	match = stat.match
+
+    	src_mac = match.get("eth_src", "")
+    	dst_mac = match.get("eth_dst", "")
+
+    	# Skip table-miss entries
+    	if not src_mac or not dst_mac:
             return None
 
-        ip_proto = match.get("ip_proto", 0)
-        src_port = match.get("tcp_src") or match.get("udp_src") or 0
-        dst_port = match.get("tcp_dst") or match.get("udp_dst") or 0
-        
-        proto_map = {6: "tcp", 17: "udp", 1: "icmp"}
-        protocol = proto_map.get(ip_proto, "other")
+    	duration = stat.duration_sec + stat.duration_nsec / 1e9
 
-        duration = stat.duration_sec + stat.duration_nsec / 1e9
-
-        return {
+    	return {
             "timestamp": ts,
-            "dpid": dpid,
-            "src_ip": src_ip,
-            "dst_ip": dst_ip,
-            "src_port": src_port,
-            "dst_port": dst_port,
-            "protocol": protocol,
-            "bytes": stat.byte_count,
-            "packets": stat.packet_count,
-            "duration": round(duration, 6),
-            "flags": "",           # Could be extended later
-            "label": 0,            # Default to benign; label later with label_window.py
+            "dpid":      dpid,
+            "src_ip":    src_mac,   # MAC used in place of IP for L2 flows
+            "dst_ip":    dst_mac,
+            "src_port":  match.get("in_port", 0),
+            "dst_port":  0,
+            "protocol":  "ethernet",
+            "bytes":     stat.byte_count,
+            "packets":   stat.packet_count,
+            "duration":  round(duration, 6),
+            "flags":     "",
+            "label":     0,
         }
 
     # Get or create a CSV writer for a specific client

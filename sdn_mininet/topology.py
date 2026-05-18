@@ -47,12 +47,12 @@ class FederatedSDNTopo(Topo):
         self.addLink(s2, s3)
 
         # Hosts — 2 per switch
-        h1 = self.addHost("h1", ip="10.0.1.1/24", mac="00:00:00:00:01:01")
-        h2 = self.addHost("h2", ip="10.0.1.2/24", mac="00:00:00:00:01:02")
-        h3 = self.addHost("h3", ip="10.0.2.1/24", mac="00:00:00:00:02:01")
-        h4 = self.addHost("h4", ip="10.0.2.2/24", mac="00:00:00:00:02:02")
-        h5 = self.addHost("h5", ip="10.0.3.1/24", mac="00:00:00:00:03:01")
-        h6 = self.addHost("h6", ip="10.0.3.2/24", mac="00:00:00:00:03:02")
+        h1 = self.addHost("h1", ip="10.0.0.1/8", mac="00:00:00:00:01:01")
+        h2 = self.addHost("h2", ip="10.0.0.2/8", mac="00:00:00:00:01:02")
+        h3 = self.addHost("h3", ip="10.0.0.3/8", mac="00:00:00:00:02:01")
+        h4 = self.addHost("h4", ip="10.0.0.4/8", mac="00:00:00:00:02:02")
+        h5 = self.addHost("h5", ip="10.0.0.5/8", mac="00:00:00:00:03:01")
+        h6 = self.addHost("h6", ip="10.0.0.6/8", mac="00:00:00:00:03:02")
 
         # Host ↔ switch links
         self.addLink(h1, s1)
@@ -110,7 +110,7 @@ def start_attack_traffic(net, duration: int):
     # hping3: sends TCP SYN packets at high rate, spoofing source IPs
     # -S = SYN flag, --flood = max rate, -V = verbose, --rand-source = spoof src
     # Rate-limited here (--interval u10000 = 100 pkt/s) to avoid VM overload
-    info("[!] DDoS SYN flood: h4 -> h1 (10.0.1.1:80)\n")
+    info("[!] DDoS SYN flood: h4 -> h1 (10.0.0.1:80)\n")
     h4.cmd(
         f"timeout {duration} hping3 -S -p 80 "
         f"--interval u10000 --rand-source "
@@ -123,7 +123,7 @@ def start_attack_traffic(net, duration: int):
     info("[!] Port scan: h6 -> 10.0.1.0/24 and 10.0.2.0/24\n")
     h6.cmd(
         "nmap -sS -T2 -p 1-1024 "
-        "10.0.1.0/24 10.0.2.0/24 "
+        "10.0.0.0/8 "
         "> /tmp/nmap_scan.log 2>&1 &"
     )
 
