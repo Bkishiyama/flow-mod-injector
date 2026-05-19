@@ -182,7 +182,7 @@ def generate_all_clients(
         n_b = (train_df["label"] == 0).sum()
         n_a = (train_df["label"] == 1).sum()
         print(f"[DataGen] {cid}: {len(train_df):,} flows "
-              f"({n_b} benign, {n_a} attack) → {train_path}")
+              f"({n_b} benign, {n_a} attack) -> {train_path}")
     
     # Combined labeled test set
     test_all = pd.concat(all_test_frames, ignore_index=True).sample(
@@ -192,7 +192,7 @@ def generate_all_clients(
     test_path = os.path.join(out_dir, "test_labeled.csv")
     test_all.to_csv(test_path, index=False)
     paths.append(test_path)
-    print(f"[DataGen] Combined test set: {len(test_all):,} flows → {test_path}")
+    print(f"[DataGen] Combined test set: {len(test_all):,} flows -> {test_path}")
     
     # Unlabeled flows for detection demo
     rng = np.random.default_rng(seed + 9999)
