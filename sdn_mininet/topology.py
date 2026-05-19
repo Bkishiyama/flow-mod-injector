@@ -136,8 +136,8 @@ def start_attack_traffic(net, duration: int):
 # df.loc[df['timestamp'] > attack_start, 'label'] = 1
 def label_attack_flows(net):
     info(f"\n*** Attack window started at: {time.strftime('%Y-%m-%dT%H:%M:%S')}\n")
-    info("    Record this timestamp. After the run, use scripts/label_window.py\n"
-         "    to update the CSV rows within this window to label=1.\n\n")
+    info("--> Record this timestamp. After the run, use scripts/label_window.py\n"
+         "--> to update the CSV rows within this window to label=1.\n\n")
 
 
 # Post-processing helper hint
@@ -146,8 +146,7 @@ After traffic generation, label the attack flows:
 
   python sdn_mininet/label_window.py \\
     --file data/live_client2.csv \\
-    --start "2026-05-18T10:05:00" \\
-    --end   "2026-05-18T10:10:00" \\
+    --all \\
     --label 1
 """
 
