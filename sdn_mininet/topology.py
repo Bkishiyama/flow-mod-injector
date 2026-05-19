@@ -182,7 +182,7 @@ def run(run_attacks: bool = False, duration: int = 60):
 
     info(f"\n[!] Running for {duration}s — Ryu is collecting flow stats\n")
     info("[!] Watch data/live_client*.csv grow in real time:\n")
-    info("watch -n 5 wc -l data/live_client*.csv\n\n")
+    info("watch -n 5 wc -l ~/sdn-fl-detector/data/live_client*.csv\n\n")
 
     time.sleep(duration)
 
