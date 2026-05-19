@@ -115,7 +115,7 @@ def cmd_evaluate(args):
         local_paths = sorted(glob.glob(args.local_models))
         for lp in local_paths:
             cid = os.path.splitext(os.path.basename(lp))[0]
-            print(f"  → {cid}")
+            print(f"  -> {cid}")
             
             df_local = detect_local(lp, args.data, threshold=args.threshold, verbose=False)
             y_pred_local = df_local["is_anomaly"].astype(int).values
