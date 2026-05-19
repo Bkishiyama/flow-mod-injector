@@ -76,7 +76,8 @@ def detect(
 
     # Fallback: if the threshold flags nothing, use the 5th percentile of
     # actual scores. This handles cases where live traffic distributions
-    # differ from training data, which causes an overly conservative threshold.
+    # differ from training data, which causes an overly conservative threshold. 
+    # Adjust threshold here since I had 0 results. This works so leave it <----------see ln 144
     if (scores < threshold).sum() == 0:
         threshold = float(np.percentile(scores, 5))
         if verbose:
@@ -139,7 +140,8 @@ def detect_local(
     scores = bundle["model"].score_samples(X)
 
     t = threshold if threshold is not None else bundle["score_stats"]["p5"]
-
+    
+    # Adjust threshold here since I had 0 results. This works so leave it <----------see ln 80
     if (scores < t).sum() == 0:
         t = float(np.percentile(scores, 5))
         if verbose:
