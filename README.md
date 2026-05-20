@@ -20,9 +20,9 @@ Overall, this system uses **Federated Learning (FL)**, which allows organization
 
 ## Table of Contents
 
-1. Section I — Problem Definition
-2. Section II — System Design
-3. Section III — Evaluation
+1. Section I: Problem Definition
+2. Section II: System Design
+3. Section III: Evaluation
 4. Quick Start
 5. Installation
 6. How to Run the Experiment
