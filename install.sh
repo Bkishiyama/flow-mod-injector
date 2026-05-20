@@ -44,7 +44,7 @@ sudo apt-get install -y \
 # Ensure Open vSwitch is running (required by Mininet)
 sudo systemctl enable openvswitch-switch
 sudo systemctl start  openvswitch-switch
-info "✓ Open vSwitch running"
+info "[!] Open vSwitch running"
 
 # Step 2: Mininet from source (Python 3)
 # The apt version of Mininet on Ubuntu 20.04 installs under Python 2.7.
