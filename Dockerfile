@@ -58,5 +58,5 @@ CMD ["bash", "-c", "\
   python cli.py evaluate --model models/global.pkl --data data/test_labeled.csv \
     --local-models 'models/client*.pkl' --out results/ && \
   echo '' && \
-  echo '=== Done! Results are in /app/results/ ==='\
+  echo ' +-+-+-+-+  Done! Results are in /sdn-fl-detector/results/  +-+-+-+-+'\
 "]
