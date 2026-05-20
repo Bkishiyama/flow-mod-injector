@@ -6,13 +6,13 @@ This is the main command-line interface for our Federated Learning
 SDN Anomaly Detection project.
 
 Common commands:
-  python cli.py generate-data --out-dir data/ --n-clients 3
-  python cli.py train-local --data data/client1.csv --out models/client1.pkl
-  python cli.py federated-aggregate --models "models/client*.pkl" --out models/global.pkl
-  python cli.py detect --model models/global.pkl --data data/test.csv --top-n 10
-  python cli.py evaluate --model models/global.pkl --data data/test_labeled.csv --out results/
+  python3 cli.py generate-data --out-dir data/ --n-clients 3
+  python3 cli.py train-local --data data/client1.csv --out models/client1.pkl
+  python3 cli.py federated-aggregate --models "models/client*.pkl" --out models/global.pkl
+  python3 cli.py detect --model models/global.pkl --data data/test.csv --top-n 10
+  python3 cli.py evaluate --model models/global.pkl --data data/test_labeled.csv --out results/
 
-Run `python cli.py <command> --help` for more options on each command.
+Run `python3 cli.py <command> --help` for more options on each command.
 """
 
 import argparse
@@ -47,7 +47,7 @@ def cmd_federated_aggregate(args):
     aggregate_and_save(models, args.out, strategy=args.strategy)
     
     print(f"\n[!] Global federated model saved to: {args.out}")
-    print(f"    Strategy used: {args.strategy}")
+    print(f"Strategy used: {args.strategy}")
 
 
 # Score new network flows and detect anomalies using the trained model
@@ -242,8 +242,6 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--seed", type=int, default=42)
 
     return parser
-
-
 
 
 # main function 
