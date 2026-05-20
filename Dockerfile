@@ -14,7 +14,7 @@
 
 FROM python:3.10-slim
 
-LABEL maintainer="your-email@example.com"
+LABEL maintainer="Brian.Kishiyama@trojans.dsu.edu"
 LABEL description="SDN Federated Unsupervised Anomaly Detection Tool"
 
 # System dependencies
