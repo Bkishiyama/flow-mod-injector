@@ -13,7 +13,7 @@ Overall, this system uses **Federated Learning (FL)**, which allows organization
 
 ## Video Presentation
 
-> **[See video presentations]**
+Watch my videos:
 
 > [SDN FL Anomaly Detection Tool](https://youtu.be/ba_NrpwrSyE)
  
