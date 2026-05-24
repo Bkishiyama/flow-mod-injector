@@ -519,13 +519,17 @@ Run `python3 cli.py <command> --help` for full options on any command.
 
 IN PROGRESS - UPDATE and REMOVE when completed
 
-1. The Core Data & Feature Pipeline Before any machine learning happens, network traffic has to be captured and turned into numbers a model can understand.
+1. The Core Data & Feature Pipeline
+
+Before any machine learning happens, network traffic has to be captured and turned into numbers a model can understand.
   - scripts/generate_data.py 
     - This is the first program of my pipeline as it creates data, or fake network logs. This program generates synthetic network flow logs from scratch without relying on the input of external data. It uses statistical rules to make realistic benign traffic along with specific cyber attacks, including DDoS, port scans, and flow table exhaustion. This approach allows the entire machine learning pipeline to be executed, tested, and verified locally without the need to download massive external packet captures. Once generated, these network flow logs are passed into src/features.py for the next stage of the pipeline. In the next stage, raw data is transformed into a structured feature matrix. In a later phase of the project, this synthetic generator will be replaced with the benchmark CICIDS2019 evaluation dataset to test the model's performance on real world attack traffic.
   - src/features.py 
     - This is the second program in my pipeline. It translates the logs, finds 8 mathematical clues, and groups them into bins. This program takes network traffic logs and organizes them such that a Machine Learning (ML) model can understand them. Instead of looking at raw text or random numbers, the program extracts eight specific details, or mathematical features. The features are consistent, measurable clues like how fast data is moving or how many packets are sent. By looking at the features together, the model can determine if a signature pattern is an attack or normal traffic. The program, for example, measures the speed of the traffic, and calculates ratios like packets-per-second, and evens out the numbers so short and long bursts of data can be compared. It also groups thousands of different connection points into a few organized categories, called bins. As an analogy, this is like sorting mail into specific cubbies based on where it needs to go. Finally, the program translates network languages, such as protocols like TCP and UDP, into simple code numbers. By doing this, the program acts as a translator, turning the complex network activity into a clean, uniform spreadsheet of numbers that the AI security model can easily read and identify cyber attacks.
 ---
-2. Local Training vs. Federated Aggregation The Federated Learning architecture splits the workload between individual local clients and a central coordinator.
+2. Local Training vs. Federated Aggregation
+
+The Federated Learning architecture splits the workload between individual local clients and a central coordinator.
   - config/fed_config.yaml 
     - Before any training begins, this configuration file acts as the master settings panel for the entire Federated Learning simulation. Instead of hardcoding values like the number of clients, training rounds, or aggregation strategy directly into the code, all of those parameters are stored here in a single, human-readable file. This makes the system highly flexible. A researcher can change the number of simulated clients or switch aggregation strategies simply by editing this file. It tells every other program in the pipeline how the federated system should behave.
   - src/local_train.py (The Client Side/trainer) 
@@ -562,15 +566,19 @@ IN PROGRESS - UPDATE and REMOVE when completed
       - Performance bar charts. 
     - In essense, this evaluation shows whether the AI is actually effective. A high precision score means the AI won't annoy network administrators with false alarms, while a high recall score shows that the system won't completely miss a malignant attacks.
 ---
-4. SDN Integration: Real Network Emulation While the core pipeline can run entirely on synthetic data, the sdn_mininet/ module bridges the gap between simulation and a real Software-Defined Network (SDN) environment using two tools: Mininet and a Ryu controller.
+4. SDN Integration Real Network Emulation 
+
+The core pipeline can run on synthetic data. The sdn_mininet/ module is used to bridge the gap between simulation and a real SDN environment by using Mininet and a Ryu controller.
   - sdn_mininet/topology.py 
-    - This program builds a virtual, emulated network from scratch inside a single machine. Using Mininet, a network emulator, it constructs a realistic SDN topology complete with a controller, switches, and hosts. It then links these components together so they can communicate with each other. Beyond connecting these nodes, this program also contains built-in traffic generators that can simulate both normal user behavior and some network attacks, such as DDoS floods or port scans. This appears as a fully functional simulated internet that with a pipeline that generate real OpenFlow traffic without using any physical hardware - it's all virtual.
+    - This program builds a virtual, emulated network from scratch, by using Mininet, a network emulator. It constructs a realistic SDN topology with a controller, switches, and hosts. It then links these components together so they can communicate with each other. Additionally, this program contains built-in traffic generators that simulate both normal user behavior and network attacks, such as DDoS floods or port scans. This appears as a functional simulated internet with a pipeline that generates OpenFlow traffic without using any physical hardware.
   - sdn_mininet/ryu_collector.py 
     - This program runs as an application on top of the Ryu SDN controller, or the "brain" that manages the virtual network's switches. Its job is to act as a data recorder. As traffic flows across the Mininet topology, the Ryu controller continuously receives raw statistics from every switch in the network via the OpenFlow protocol. This program receives those statistics, organizes them into structured rows, and writes them to a CSV file. In short, it is the pipeline's real-time sensor, converting switch data into network flow logs. This is similar to my first phase where I had scripts/generate_data.py make data synthetically.
   - sdn_mininet/label_window.py 
     - After a Mininet experiment finishes running, this program acts as a post-processing annotator. Because the traffic generator in topology.py knows when an attack started and stopped, this program takes the raw CSV of collected flows. It then reviews it and stamps each time window with the correct label, as either "benign" or the specific attack type that was active during that period. This labeled dataset is what gets forwarded to src/features.py for feature extraction. This finishes the bridge between live SDN emulation and machine learning pipeline.
 ---
-5. Execution, Orchestration & Environment These files handle the user interface, automation, environment setup, and containerization of the project.
+5. Execution, Orchestration & Environment
+
+These files handle the user interface, automation, environment setup, and containerization of the project.
   -	cli.py (root entry point) 
     - This seventh program serves as the main entry point and control center for the user. Instead of forcing you to look through folders and manually run five or six different programs one after the other, this script combines everything into a single, centralized dashboard called a Command-Line Interface (CLI). It allows you to run and manage the entire artificial intelligence pipeline from your terminal using simple commands. For example, typing python cli.py train automatically wakes up the training programs, while typing python cli.py detect activates the production engine to start scanning for cyber attacks. In short, it acts like a universal remote control, making the entire complex AI system easy to operate.
   -	src/cli.py (argparse command routing) 
@@ -594,7 +602,9 @@ IN PROGRESS - UPDATE and REMOVE when completed
   - .gitignore
     - This file tells Git which files and folders to leave out of version control. For this project, it excludes the three generated runtime directories, data/, models/, and results/. Theire contents are re-creatable by simply running the pipeline and would increase the repository unnecessarily. It also excludes Python cache folders (__pycache__), compiled bytecode (.pyc files), and local environment folders created by pip or Conda.  
 ---
-6. Generated Data Directories These three folders are not committed to the repository and are created automatically when the pipeline runs.
+6. Generated Data Directories
+
+These three folders are not committed to the repository and are created automatically when the pipeline runs.
   -	data/ 
     - This folder is the pipeline's working scratchpad. It stores the synthetic network flow logs produced by scripts/generate_data.py, or the real flow logs captured by sdn_mininet/ryu_collector.py. It also stores the labeled and feature-extracted datasets produced by downstream stages. The data is re-generatable, so it is listed in .gitignore.
   -	models/ 
