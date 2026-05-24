@@ -4,14 +4,16 @@
 
 **Tool 2: Model Posioning Sanitizer**
 
-This tool extends Tool 1 of my sdn-fl-detector repository. Most files have not changed. It's goal is to secure the machine learning (ML) pipeline. 
+This tool extends my Tool 1 project from my sdn-fl-detector repository. Most files have not changed as I start off by copying my Tool 1 Repository here. My goal is to secure the machine learning (ML) pipeline. 
 
 Tool 1 detected threats in my Software Defined Network (SDN), created logs, and used the logs in my Federated Learaning (FL) model.
 Tool 2 defends the network against attackers who try to influence the FL model. 
 This project utilizes a Byzantine statistical filter in the Ryu SDN controller to defend the FL model from being poisoned.
 Basically, it applies a Z-score anomaly detection uploads from the clients and determines if the data is corrupted.
 
-IN PROGRESS - UPDATE and REMOVE when completed
+My Model Poisoning Sanitizer (sanitizer) relies on Byzantine Aggregation. This provides security to protect the FL model for poisoning attacks. In FL, a host can send bad training data to the central server. If the global ML model uses this data, the FL model becomes corrupted and produces an ineffective defense mechanism. The sanitizer will check data that the central server receives. It compares it with the group's data using the Z-score statistical technique. If the client's data does not match the group's data, the client data gets dropped before it gets fused into the FL model. If the client's data does not have abnormal data, it gets combined with the group's data. Federated Averaging (FedAvg) is used to create a new global model - one that can detect attacks for all clients. Meaning, the new global model is sent back to all clients so they can defend against zero day attacks. 
+
+The main contribution is using the Byzantine statistical filtering method within an SDN-FL environment. It is important to defend the FL pipeline against malicious clients who participate in training the global protection model. 
 
 ---
 
@@ -23,11 +25,8 @@ Watch my videos:
 
 > 🎥 [SDN FL Anomaly Detection Tool](https://youtu.be/ba_NrpwrSyE)  
 > 📚 with [Docker copy-and-paste commands](https://1drv.ms/w/c/0b9ef4570f82165e/IQD-QWe9zvwpRKE1oNgw0TT4ATfUrsw-xcZuEtRkoxQL8yA?e=jBDDw0)
- 
-> 🎥 [SDN FL Anomaly Detection on Ubuntu (Optional)](https://youtu.be/Rrwn5y1k69c)  
-> 📚 with [Ubuntu copy-and-past commands](https://1drv.ms/w/c/0b9ef4570f82165e/IQAmXO4cxcotSavnhSNEXlNkAXPqC-59fMAETPiFewCAOAU?e=gws1CK)
 
-IN PROGRESS - UPDATE and REMOVE when completed
+IN PROGRESS - UPDATE video and REMOVE when completed
 
 ---
 
@@ -537,6 +536,11 @@ IN PROGRESS - UPDATE and REMOVE when completed
       - **Score Ensemble** acts like a panel of experts averaging out their scores to see how unusual a piece of traffic looks, or
       - **Threshold Consensus** acts like a democratic vote where the majority must agree before officially declaring the data as a cyber attack.
   - This process is the core of Federated Learning. It creates a massive, network wide protection shield; every participant benefits from the collective knowledge of the entire group. They will be able to spot advanced threats like DDoS attacks together while keeping their own local data and completely private and secure.
+---
+  2.5 The Zero-Trust Security Guard
+  This is Tool 2 that I am adding to Tool 1.  
+  - src/sanitizer.py
+    -  This program (Step 4.5) is next in the pipeline. Before the coordinator runs the Score Ensemble or Threshold Consensus, it inspects the client data that it receives. When it receives data from a client, the data is compared against the groups data by using a Z-score. The Z-score measures client values against the group's values and determines if there are any deviations. If there are deviations, the data is dropped and data gets logged as a security violation. This way, the data is not injected into the FL model. The FL model is forumulated without corrupted data and thus remains reliable. 
 ---
 3. Detection & Evaluation Once the global federated model is built, it needs to be put to work and its performance measured.
   -	src/detect.py 
