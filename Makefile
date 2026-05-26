@@ -38,7 +38,7 @@ train-c3:
 
 # Federated aggregation
 aggregate:
-	$(CLI) federated --models "models/client*.pkl" --out models/global.pkl
+	$(CLI) federate --models "models/client*.pkl" --out models/global.pkl
 
 # Detection
 detect:
