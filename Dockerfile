@@ -34,6 +34,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY src/       ./src/
 COPY scripts/   ./scripts/
 COPY config/    ./config/
+COPY sdn_mininet/   ./sdn_mininet/
 COPY cli.py     .
 
 # Create directories
@@ -45,19 +46,20 @@ CMD ["bash", "-c", "\
   python cli.py generate-data --out-dir data/ --n-clients 3 --n-benign 2000 --n-attack 400 && \
   echo '' && \
   echo '=== Training local models ===' && \
-  python cli.py train-local --data data/client1.csv --out models/client1.pkl --client-id client1 && \
-  python cli.py train-local --data data/client2.csv --out models/client2.pkl --client-id client2 && \
-  python cli.py train-local --data data/client3.csv --out models/client3.pkl --client-id client3 && \
+  python cli.py train --data data/client1.csv --out models/client1.pkl --client-id client1 && \
+  python cli.py train --data data/client2.csv --out models/client2.pkl --client-id client2 && \
+  python cli.py train --data data/client3.csv --out models/client3.pkl --client-id client3 && \
   echo '' && \
   echo '=== Federated aggregation ===' && \
-  python cli.py federated-aggregate --models 'models/client*.pkl' --out models/global.pkl && \
+  python cli.py federate --models 'models/client*.pkl' --out models/global.pkl && \
   echo '' && \
   echo '=== Running detection ===' && \
   python cli.py detect --model models/global.pkl --data data/new_flows.csv --top-n 10 --out results/detections.csv && \
   echo '' && \
   echo '=== Evaluating models ===' && \
   python cli.py evaluate --model models/global.pkl --data data/test_labeled.csv \
+    --detections results/detections.csv \
     --local-models 'models/client*.pkl' --out results/ && \
   echo '' && \
-  echo ' +-+-+-+-+  Done! Results are in /sdn-poison-guard/results/  +-+-+-+-+'\
+  echo ' +-+-+-+-+  Done! Results are in /app/results/  +-+-+-+-+'\
 "]
