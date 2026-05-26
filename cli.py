@@ -353,11 +353,16 @@ def build_parser() -> argparse.ArgumentParser:
         help="Evaluate detection performance"
     )
 
+    # Path to the global federated model file for Tool 2
+    sp.add_argument("--model", required=True)
+
     # Path to the labeled test dataset for evaluation - for Tool 2
     sp.add_argument("--data", required=True)
-
     # Path to the CSV file containing detection results and labels.
     sp.add_argument("--detections", required=True)
+
+    # Optional anomaly score threshold override for Tool 2
+    sp.add_argument("--threshold", type=float, default=None)
     # Directory where evaluation reports and metrics will be saved
     sp.add_argument("--out", default="results")
 
