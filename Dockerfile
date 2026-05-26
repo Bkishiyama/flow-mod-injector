@@ -1,21 +1,21 @@
-# Dockerfile — SDN Federated Anomaly Detection Tool
+# Dockerfile — SDN FL Poison Guard Tool
 #
-# Runs the full synthetic pipeline (generate -> train -> aggregate -> detect -> evaluate).
+# Runs the full synthetic pipeline (generate -> train -> filter -> aggregate -> detect -> evaluate).
 # Note: Mininet + Ryu live mode requires Ubuntu 20.04 natively (see README).
 #
 # Build:
-#   docker build -t sdn-fl-detector .
+#   docker build -t sdn-poison-guard .
 #
 # Run full pipeline:
-#   docker run --rm -v $(pwd)/results:/app/results sdn-fl-detector
+#   docker run --rm -v $(pwd)/results:/app/results sdn-poison-guard
 #
 # Interactive shell:
-#   docker run --rm -it -v $(pwd)/results:/app/results sdn-fl-detector bash
+#   docker run --rm -it -v $(pwd)/results:/app/results sdn-poison-guard bash
 
 FROM python:3.10-slim
 
 LABEL maintainer="Brian.Kishiyama@trojans.dsu.edu"
-LABEL description="SDN Federated Unsupervised Anomaly Detection Tool"
+LABEL description="SDN FL Poison Guard Tool"
 
 # System dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -58,5 +58,5 @@ CMD ["bash", "-c", "\
   python cli.py evaluate --model models/global.pkl --data data/test_labeled.csv \
     --local-models 'models/client*.pkl' --out results/ && \
   echo '' && \
-  echo ' +-+-+-+-+  Done! Results are in /sdn-fl-detector/results/  +-+-+-+-+'\
+  echo ' +-+-+-+-+  Done! Results are in /sdn-poison-guard/results/  +-+-+-+-+'\
 "]
