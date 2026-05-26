@@ -24,6 +24,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Working directory
 WORKDIR /app
+COPY . /app
 
 # Python dependencies (cached layer)
 COPY requirements.txt .
