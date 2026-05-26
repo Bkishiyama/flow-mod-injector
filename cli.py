@@ -268,8 +268,13 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--data", required=True)
     # Unique identifier for the FL client
     sp.add_argument("--client-id", required=True)
-    # Directory where trained models will be stored
-    sp.add_argument("--model-dir", default="models")
+    # Directory where trained models will be stored - Tool 2 adjusted
+    sp.add_argument(
+        "--out", 
+        required=True,
+        help="Output path for trained model (.pkl)"
+    )
+    
     # Number of trees used in the Isolation Forest model.
     # Higher values may improve stability but increase training time.
     sp.add_argument("--n-estimators", type=int, default=100)
