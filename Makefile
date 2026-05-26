@@ -48,12 +48,10 @@ detect:
 		--top-n 10 \
 		--out   results/detections.csv
 
-# Evaluation
+# Evaluation - update to Tool2
 evaluate:
 	$(CLI) evaluate \
-		--model        models/global.pkl \
-		--data         data/test_labeled.csv \
-		--local-models "models/client*.pkl" \
+		--detections   results/detections.csv \
 		--out          results/
 
 # Multi-round FL simulation
