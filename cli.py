@@ -34,7 +34,7 @@ import sys
 import os
 import csv
 sys.path.insert(0, os.path.dirname(__file__))
-
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'sdn_mininet'))
 # Import existing Tool 1 CLI command handlers; I need to install package "src" in install.sh
 from src.cli import (
     cmd_train_local,
