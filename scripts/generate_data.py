@@ -209,4 +209,5 @@ def generate_all_clients(
 
 
 if __name__ == "__main__":
-    generate_all_clients()
+    # I set this to always generate 6 clients. 
+    generate_all_clients(n_clients=6)
