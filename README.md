@@ -115,7 +115,7 @@ IN PROGRESS - UPDATE and REMOVE when completed
 ---
 ### Core Components
 
-![Tool 2 added](docs/tool2added.drawio.svg)
+![Tool 2 added](docs/tool2add.drawio.svg)
 
 Tool 2's has added programs to Tool 1
 
