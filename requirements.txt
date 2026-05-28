@@ -24,3 +24,9 @@ webob>=1.8.7  # required by Ryu REST API
 # Optional: Ryu + Mininet (Linux only — install via install.sh or apt)
 # ryu>=4.34
 # mininet (install via: sudo apt-get install mininet)
+
+# requirements.txt -> SDN FlowMod Injection Lab (Tool 3)
+# Install with:  pip3 install -r requirements.txt
+
+# Packet capture and crafting (Phase 1 sniffer)
+scapy>=2.5.0
