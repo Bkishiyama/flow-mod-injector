@@ -1,4 +1,4 @@
-<img src="docs/network1x.JPG" style="width:100%; aspect-ratio: 10 / 3; object-fit: cover;">
+<img src="docs/netocto.jpg" style="width:100%; aspect-ratio: 10 / 3; object-fit: cover;">
 
 # SDN Federated Learning Model with Poisoning Guard
 
