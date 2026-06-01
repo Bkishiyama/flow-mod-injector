@@ -52,37 +52,41 @@ This is what makes a this Denial of Service unique: it's tailored to avoid detec
 
 ### Importance
 
-SDN is used in big company data centers, cloud systems, and campus networks.
-It allows network administrators to control traffic from one place and program it easily.
-It is a central server and the “brains” of the network; this makes it a target for attacks.
-If someone successfully attacks the controller, it's not just one computer that is affected. The network traffic flows are compromised.
+The OpenFlow control channel is similar to a central command center that lets a controller make decisions about how data is forwarded on every switch in its network - without any routers. If a hacker compromised this channel, it would not just affect one computer or one flow of data. The hacker would gain the power to change the entire network's logic from a single point. This is different from a brute-force attack, which appears as an obvious attempt to break in. A FlowMod injection, on the other hand, is a stealthier attack that leaves no trace of an error in the controller's log. It also has no unusual activity in ping statistics, and no warning signs in standard network monitoring tools. The reason this attack is mostly successful is that it blends in with normal network operations, which makes it difficult to detect.
 
-When organizations work together on machine learning projects, they have to trust each other.
-But what if one of them is not honest? This can happen in Federated Learning, where organizations share information to make a better model.
-This model can detect malicious traffic on the internet.
-If one organization is bad or hacked, they can secretly change the model so the central model does not work right. Part of FL models do not include error checking so other organizations may not know a global model is ineffective.
-Without a well-trained model, organizations could be at risk for attacks.  
+This should be addressed not only in networks, but in a lab setting. SDNs are used in real-world environments, such as company data centers, university networks, and cloud infrastructure. In these places, the Ryu and OVS stack or similar OpenFlow-based systems handle actual traffic. But here's the issue: the control channel is often left unencrypted because setting up TLS is a hassle and people don't understand the threat. Most people assume that the control plane is safe from attackers because it's physically or logically isolated. But Tool 3 shows that's not true. If someone has local access, like an insider, they can manipulate the switch's flow table and do not need special privileges. The assumption of safety is a mistake; systems need to be secured. The unencrypted control channel makes it vulnerable to attacks, and Tool 3 demonstrates how easily an attacker can exploit this weakness. Local access is enough to corrupt the flow table; Tool 3 highlights the need for better security measures to protect these critical systems.
+
+Tool 3 shows its importance by sneaking past security measures without being detected. This is because the security rule is set up to only block certain types of internet traffic, specifically the kind that uses a certain port. The tool uses a different kind of internet traffic, called ICMP, which is not blocked by the rule. This means that even if the tool is being used to disrupt the network, the network will still seem to be working fine if someone is checking it with a simple ping test. Most basic network monitoring systems rely on these kinds of tests to make sure everything is running smoothly. So, even though the network might seem okay, it could actually be having issues that aren't being detected. This tool is designed to show just how big the difference can be between what the network seems to be doing and what's really going on.
+
 
 
 ### Existing Approaches
 
-To protect against model poisoning in federated learning, the main methods used are Byzantine-robust aggregation algorithms.
-The basic version is FedAvg that simply averages all updates from clients. Then, outliers are detected because they do not fall within those averages.
-Other alternatives are Krum, Trimmed Mean, and Median aggregation which also reduce look at the impact of statistical outliers before calculating the global update.
-This tool uses a Z-score sanitizer, which calculates the mean and standard deviation of the metrics submitted by clients.
-It then rejects any submission with a Z-score that is higher than a certain threshold, 1.5, or configured value.
-For example, submissions from a poisoned client with a very high anomaly score, like h6 with its score multiplied by 100, are identified and excluded before aggregation.
-This prevents the corrupted value from changing the global model. By doing this, the tool makes federated learning more secure and reliable.
-The Z-score sanitizer is a useful tool in this effort, as it filters out suspicious submissions and ensure that the global model is updated accurately.
-Overall, the goal is to prevent model poisoning and maintain the integrity of the aggregated FL model.
+To protect the connection between the controller and the switch, the OpenFlow specification has a special secure mode. This mode uses Transport Layer Security (TLS), which is a protocol that secures data, in transit, by providing encryption, authentication, and integrity. As both the controller and the switch use TLS, their conversation is wrapped in an encrypted session. If someone is listening in on the same network, they can't understand what's being said. Also, if someone tries to join the conversation without the right certificate, they'll be rejected before they can even start talking. This is a strong defense against certain kinds of attacks, like Tool 3’s attack. It's an important way to keep the network safe and secure.
+
+In real-world situations, not many people use TLS. When you set up Ryu, it normally listens on a regular TCP port. And when you set up OVS, it connects to controllers using regular TCP. To use TLS, you need to create and share certificates with every switch and controller, manage a certificate authority, and deal with certificate rotation. This is a lot of extra work that many researchers and some production environments don't want to bother with, or don’t fully understand. As a result, most OpenFlow networks that are in use, including all the standard Mininet environments, have a control channel that can be easily read and modified by any local process that has access to raw sockets. This means that anyone with the right access can see and change the data being sent over the network.
+
+Beyond TLS, several complementary defenses have been proposed. Controller-side FlowMod auditing can inspect every rule before it is acknowledged, flagging entries with unexpected cookies, unusually high priorities, or source sessions that do not correspond to the primary controller connection. Role-based access control in OpenFlow 1.3 allows a master controller to demote competing connections to slave status. This would, in theory,  prevent them from modifying flow tables. Tool 3 demonstrates a requested equal role before sending a FlowMod message. The switch accepts the message and the role change without challenge. Continuous flow-table monitoring using ovs-ofctl or equivalent tooling can detect rogue rules after the fact by comparing the live flow table against an expected baseline. None of these approaches are enabled by default in a standard Ryu and OVS deployment.
+
 
 ### The Issue
 
-The issue for this tool highlights is a weakness in the security of FL systems, specifically between the part that uses machine learning and the part that creates a global model.
-The global model is sent back to the clients as it has been made better due to contributing organizational data.
-Tool 2 helps fix this by creating a better system to detect unusual activity - it starts with a basic model that can spot anomalies and then makes a global detection model stronger.
-This includes a sanitizer that can detect attacks from compromised clients.
-The goal is to catch any malicious updates that might be sent by an organization that is being malicious or has been hacked.
+The main issue that Tool 3 is trying to fix is that the connection between Ryu and OVS, which is used to control the flow of traffic, is not secure. By default, this connection is not authenticated or encrypted, which means that anyone with access to the local network can potentially interfere with it. This is a problem because it would allow an attacker to make permanent changes to a switch's flow table, which could have serious consequences, such as a TCP connection.
+
+The attack path has four steps. First, the injector passively sniffs the loopback interface and confirms that OpenFlow messages are visible in plaintext. This demonstrates the surveillance capability that precedes any targeted injection. Second, it opens a direct TCP connection to the passive OVS listener on port 6654, which was enabled in topology.py to simulate the access a compromised host or insider would have to the switch's management interface. Third, it completes a standard OpenFlow 1.3 handshake, i.e., Hello, Features Request and a Features Reply - that establishes a session that OVS treats as a legitimate second controller. Fourth, it requests an “equal” role to bypass Ryu's master lock, then sends a crafted OFPT_FLOW_MOD message encoding three OXM match fields: ETH_TYPE equal to 0x0800 for IPv4, IP_PROTO equal to 6 for TCP, and TCP_DST equal to 80 for HTTP. No instructions are appended to the FlowMod body. In OpenFlow 1.3, the absence of instructions is an implicit drop. As a result, OVS installs the rule and silently discards every matching packet.
+
+The rule has a high priority, 40,000, which is much higher than the default rules set by Ryu's learning switch, with a priority of 1. This rule is also permanent because its idle and hard timeouts are set to zero. The rule includes a special cookie, 0xDEADBEEFCAFE0001, which can be seen when using ovs-ofctl to look at the flow rules, but Ryu's standard controller doesn't check the flow table for unexpected rules. So, Ryu doesn't even know this rule exists. It keeps collecting flow statistics and watching the FL upload endpoint, but it doesn't flag anything out of the ordinary in its logs. The only pattern that appear strange is that HTTP flows from h1 to h2 stop sending bytes. But this could just be normal changes in traffic, not an attack. In essence, Ryu doesn't suspect a thing:
+
+- The rule's high priority means it takes precedence over other rules. 
+- The permanent nature of the rule means it won't be removed unless explicitly deleted. 
+-  The special cookie is a unique identifier for the rule, but Ryu doesn't monitor for it. 
+- Ryu's lack of awareness about the rule means it can't take any action against it. 
+- The only noticeable effect is the stoppage of HTTP flows, which could be attributed to various reasons.
+ 
+This situation highlights a potential vulnerability in Ryu's controller, where a malicious rule can be inserted without being detected. The fact that the rule is permanent and has a high priority makes it even more concerning, as it can persist and override other rules without being noticed.
+
+The problem this tool highlights is a major concern: normally, a SDN does not have a way to detect, stop, or even warn about fake flow rules that are sent through an unsecured control channel. To fix this, security needs to be added at a lower level, using TLS rather than trying to use better machine learning models at a higher level. This is because the issue is fundamentally about securing the connection, not just improving the algorithms used to analyze the data. By using TLS, any data sent over the control channel is encrypted and authenticated, making it much harder for an attacker to inject fake flow rules. This is a critical step in securing SDN deployments and preventing potential attacks.
+
 
 ---
 
