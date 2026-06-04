@@ -1,3 +1,4 @@
+from __future__ import annotations
 #!/usr/bin/env python3
 
 """ sdn_mininet/topology.py 
@@ -6,10 +7,10 @@ This topology is used for Tools 1, 2, and 3.
 Summary:
 Tool 1: FL anomaly detection -> ryu_collector.py polls flow stats -> CSVs
 Tool 2: Poisoning defense -> h6 runs poisoned_host.py; cleaned by sanitizer.py
-Tool 3: FlowMod injection -> attacker (h7) runs injector.py; drops HTTP on s1
+Tool 3: FlowMod injection -> attacker (h7) runs injector.py; HTTP traffic dropped on s1
 
-Added h7 to the topology from Tool 1 -> connects to s1; runs sdn_mininet/injector.py
-h2 does HTTP on port 80 and the injection target
+h7 is added to the topology <-> s1; h7 runs injector.py
+h2 has HTTP on port 80 and the injection target s1
 s1 gets a passive OVS listener on ptcp:6654 -> allows injector to connect
 to the switch with a second controller session
 
@@ -19,19 +20,14 @@ Tools 1 & 2 use port 6633.  The sniffer in injector.py matches this.
 Usage
 - Terminal 1: Ryu with FL collector and Tool 2poisoning guard
   - ryu-manager sdn_mininet/ryu_collector.py --observe-links
-
 - Terminal 2: start topology (benign only)
   - sudo python3 sdn_mininet/topology.py --time 120
-
 - Terminal 2: with all attacks
   sudo python3 sdn_mininet/topology.py --time 120 --attack --inject
-
 - Terminal 3: Tool 3 - inject FlowMod (or run from Mininet CLI)
   - python3 sdn_mininet/injector.py
-
 - Terminal 4: watch Tool 1 data accumulate
   - watch -n 5 wc -l data/live_client*.csv
-
 -  Verify Tool 3 in Mininet CLI
   - mininet> h1 curl --max-time 3 http://10.0.0.2/  # times out (injected)
   - mininet> h1 ping -c 3 10.0.0.2  # succeeds - evasion proof
@@ -42,7 +38,6 @@ import argparse
 import subprocess
 import sys
 import time
-
 from mininet.cli import CLI
 from mininet.log import info, setLogLevel
 from mininet.net import Mininet
@@ -53,14 +48,13 @@ from mininet.util import dumpNodeConnections
 
 #  Topology Definition
 """
-Three switches: s1<–>s2<–>s3), each one represents one 
-federated client organization.
-s1: h1, h2 — client1 org
-s2: h3, h4 (DDoS)  — client2 org
-s3: h5, h6 (poison)  — client3 org
-Tool 3 adding h7 as the attacker to s1:
-h7 shares s1 so it can inject FlowMods that
-affects HTTP traffic between h1 <-> h2 as both are on the same switch.
+Three switches: s1<–>s2<–>s3, each one represents one federated client organization.
+s1: {h1, h2} —> FL client1 -> one Isolation Forest
+s2: {h3, h4 (DDoS)}  —> FL client2 org -> one Isolation Forest
+s3: {h5, h6 (poison)}  —> FL client3 org -> one Isolation Forest
+For Tool 3, I add h7 as the attacker to s1:
+h7 shares s1 so it can inject FlowMods that affects HTTP traffic 
+between h1 <-> h2 as both are on the same switch.
 """
 class FederatedSDNTopo(Topo):
 
