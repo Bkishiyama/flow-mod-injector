@@ -1,32 +1,26 @@
 from __future__ import annotations
-
 #!/usr/bin/env python3
-"""
-sdn_mininet/ryu_collector.py: Ryu SDN Controller + Flow Stats Collector 
+""" sdn_mininet/ryu_collector.py
+This is the Ryu SDN Controller with Flow Stats Collector,
 with Byzantine-Robust Model Poisoning Defense
-
-This Ryu app does three main jobs:
-1. Acts as a basic learning L2 switch (so hosts in Mininet can ping each other)
-2. Periodically collects OpenFlow flow statistics from all switches and saves 
-them as CSV files for our anomaly detection tool.
-3. Exposes REST endpoints for FL clients to upload local model metrics and 
-triggers sanitized aggregation to defend against model poisoning attacks.
-
+This Ryu app:
+1. Learns all MAC to Port mappings. Hosts in Mininet should ping each other.
+2. Collects OpenFlow flow stats from all switches and saves them as CSV files
+for my anomaly detection tool.
+3. Provides REST endpoints so FL clients can upload local model metrics and
+then sanitizes aggregation to thwart model poisoning attacks.
 The collected data is written to:
 data/live_client1.csv
 data/live_client2.csv
 data/live_client3.csv
-
 REST API (runs on port 8080):
 POST /fl/upload -> client pushes local model metric
-GET  /fl/aggregate -> trigger sanitized aggregation
-GET  /fl/status -> query current global model state
-GET  /fl/reset -> clear upload queue for next FL round
-
-Usage (run from project root):
+GET /fl/aggregate -> trigger sanitized aggregation
+GET /fl/status -> query current global model state
+GET /fl/reset -> clear upload queue for next FL round
+Usage:
 ryu-manager sdn_mininet/ryu_collector.py --observe-links
 """
-
 import csv
 import json
 import os
@@ -51,13 +45,12 @@ from webob import Response
 from src.sanitizer import aggregate_with_sanitizer, SanitizationReport
 from src.features import load_flows  # available for live scoring
 
-
 # Configuration
-POLL_INTERVAL = 5  # How often to poll switches for flow stats (seconds)
-OUTPUT_DIR = "data"  # Where to save the live CSV files
-MAX_ROWS = 5000  # Future: rotate files after this many rows
+POLL_INTERVAL = 5 # How often to poll switches for flow stats (seconds)
+OUTPUT_DIR = "data" # Where to save the live CSV files
+MAX_ROWS = 5000 # Future: rotate files after this many rows
 
-# Map switch DPID to client name (easy to extend for bigger topologies)
+# Map switch DPID to client name (easy to extend for bigger topologies) -------- update and check for now, use 3 switches only ---------
 DPID_TO_CLIENT = {
     1: "live_client1",
     2: "live_client2",
@@ -76,11 +69,10 @@ REST_APP_NAME = "fl_sanitizer_api"
 Z_THRESHOLD = float(os.environ.get("Z_THRESHOLD", "1.5"))
 SANITIZER_LOG_PATH = os.environ.get("SANITIZER_LOG_PATH", "results/ryu_sanitizer.log")
 
-# Tool 2: in-memory upload queue (cleared each FL round)
+# Tool 2: in memory upload queue (cleared each FL round)
 _upload_queue: Dict[str, float] = {}
 _last_global_model: Optional[float] = None
 _last_report: Optional[SanitizationReport] = None
-
 
 # Main Ryu Application
 class SDNSanitizerController(app_manager.RyuApp):
@@ -89,12 +81,11 @@ class SDNSanitizerController(app_manager.RyuApp):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
         # Tool 1: switch learning and monitoring state
-        self.mac_to_port = {}           # MAC address learning table per switch
-        self.datapaths = {}             # Connected switches
-        self._writers = {}              # CSV writers
-        self._files = {}                # File handles
+        self.mac_to_port = {} # MAC address learning table per switch
+        self.datapaths = {} # Connected switches
+        self._writers = {} # CSV writers
+        self._files = {} # File handles
         self._row_counts = defaultdict(int)
 
         # Tool 2: register REST API
@@ -108,11 +99,9 @@ class SDNSanitizerController(app_manager.RyuApp):
         self.monitor_thread = hub.spawn(self._monitor_loop)
 
         self.logger.info("[Ryu] SDN Sanitizer Controller started!")
-        self.logger.info(f"      Polling every {POLL_INTERVAL} seconds -> {OUTPUT_DIR}/")
+        self.logger.info(f" Polling every {POLL_INTERVAL} seconds -> {OUTPUT_DIR}/")
         self.logger.info(f"[Ryu] Zero-trust FL aggregation active — Z threshold: {Z_THRESHOLD}")
 
-
-	
     # Called when a switch connects to the controller
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
@@ -128,7 +117,6 @@ class SDNSanitizerController(app_manager.RyuApp):
         actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
                                           ofproto.OFPCML_NO_BUFFER)]
         self._add_flow(datapath, priority=0, match=match, actions=actions)
-
 
     # Packet-In Handler (Learning Switch)
     # Handle packet-in messages and learn MAC addresses
@@ -155,7 +143,6 @@ class SDNSanitizerController(app_manager.RyuApp):
 
         # Decide output port
         out_port = self.mac_to_port[dpid].get(dst_mac) or ofproto.OFPP_FLOOD
-
         actions = [parser.OFPActionOutput(out_port)]
 
         # Install forwarding rule if we know the destination
@@ -173,17 +160,15 @@ class SDNSanitizerController(app_manager.RyuApp):
         )
         datapath.send_msg(out)
 
-
     # Process flow statistics received from switches.
     @set_ev_cls(ofp_event.EventOFPFlowStatsReply, MAIN_DISPATCHER)
     def flow_stats_reply_handler(self, ev):
         body = ev.msg.body
         datapath = ev.msg.datapath
         dpid = datapath.id
-
         client = DPID_TO_CLIENT.get(dpid, f"live_client{dpid}")
-        writer = self._get_writer(client)
 
+        writer = self._get_writer(client)
         ts = time.strftime("%Y-%m-%dT%H:%M:%S")
         rows_written = 0
 
@@ -199,7 +184,6 @@ class SDNSanitizerController(app_manager.RyuApp):
             self.logger.info(f"[Collector] dpid={dpid} ({client}): "
                            f"+{rows_written} flows (total={self._row_counts[client]})")
 
-
     # Background Monitoring
     # Background thread: poll switches for flow stats periodically
     def _monitor_loop(self):
@@ -212,7 +196,6 @@ class SDNSanitizerController(app_manager.RyuApp):
     def _request_flow_stats(self, datapath):
         parser = datapath.ofproto_parser
         ofproto = datapath.ofproto
-
         req = parser.OFPFlowStatsRequest(
             datapath,
             flags=0,
@@ -224,15 +207,11 @@ class SDNSanitizerController(app_manager.RyuApp):
         )
         datapath.send_msg(req)
 
-
-	
-    # Helper Functions
-    # Install a flow entry on the switch.
+    # Helper Functions that installs a flow entry on the switch.
     def _add_flow(self, datapath, priority, match, actions,
                   idle_timeout=30, hard_timeout=0):
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
-
         inst = [parser.OFPInstructionActions(
             ofproto.OFPIT_APPLY_ACTIONS, actions)]
 
@@ -246,14 +225,12 @@ class SDNSanitizerController(app_manager.RyuApp):
         )
         datapath.send_msg(mod)
 
-	
     # Convert OpenFlow flow stat into a CSV row
     # Extract counters from an OFPFlowStats entry
-    # Uses MAC addresses since L2 flows don't have IP match fields
+    # Uses MAC addresses since L2 flows don't have IP match fields -----------------------
     # Skips table-miss entries (priority=0, no src/dst)
     def _stat_to_row(self, stat, dpid, ts) -> dict:
         match = stat.match
-
         src_mac = match.get("eth_src", "")
         dst_mac = match.get("eth_dst", "")
 
@@ -262,20 +239,19 @@ class SDNSanitizerController(app_manager.RyuApp):
             return None
 
         duration = stat.duration_sec + stat.duration_nsec / 1e9
-
         return {
             "timestamp": ts,
-            "dpid":      dpid,
-            "src_ip":    src_mac,   # MAC used in place of IP for L2 flows
-            "dst_ip":    dst_mac,
-            "src_port":  match.get("in_port", 0),
-            "dst_port":  0,
-            "protocol":  "ethernet",
-            "bytes":     stat.byte_count,
-            "packets":   stat.packet_count,
-            "duration":  round(duration, 6),
-            "flags":     "",
-            "label":     0,
+            "dpid": dpid,
+            "src_ip": src_mac, # MAC used in place of IP for L2 flows -------------------
+            "dst_ip": dst_mac,
+            "src_port": match.get("in_port", 0),
+            "dst_port": 0,
+            "protocol": "ethernet",
+            "bytes": stat.byte_count,
+            "packets": stat.packet_count,
+            "duration": round(duration, 6),
+            "flags": "",
+            "label": 0,
         }
 
     # Get or create a CSV writer for a specific client
@@ -283,28 +259,20 @@ class SDNSanitizerController(app_manager.RyuApp):
         if client not in self._writers:
             path = os.path.join(OUTPUT_DIR, f"{client}.csv")
             file_exists = os.path.isfile(path)
-
             f = open(path, "a", newline="")
             writer = csv.DictWriter(f, fieldnames=CSV_FIELDNAMES)
-
             if not file_exists:
                 writer.writeheader()
-
             self._writers[client] = writer
             self._files[client] = f
             self.logger.info(f"[Collector] Opened/created CSV: {path}")
-
         return self._writers[client]
 
-	
     # Tool 2: sanitizer trigger called by REST API
     def run_sanitized_aggregation(self, z_threshold: float = Z_THRESHOLD):
-        """
-        Consume the current upload queue, apply the Z-score sanitizer,
-        and update the global model.
-        """
+        # Consume the current upload queue, apply the Z-score sanitizer,
+        # and update the global model.
         global _last_global_model, _last_report
-
         if not _upload_queue:
             self.logger.warning("[Sanitizer] Aggregation triggered with empty queue")
             return None, None
@@ -336,37 +304,45 @@ class SDNSanitizerController(app_manager.RyuApp):
 
 
 # Tool 2: REST API Handler
+# REST API for FL clients to upload local model metrics and start
+# sanitized aggregation.
+"""
+REST API controller for handling Federated Learning client uploads.
+This provides an endpoint for FL clients to submit their local model metrics,
+e.g., accuracy, loss, etc., which are then queued for sanitized aggregation.
+"""
 class FLSanitizerAPI(ControllerBase):
-    """
-    REST API for FL clients to upload local model metrics and trigger
-    sanitized aggregation.
-    """
-
     def __init__(self, req, link, data, **config):
         super().__init__(req, link, data, **config)
+        # Reference the main sanitizer controller that manages aggregation
         self.controller: SDNSanitizerController = data[REST_APP_NAME]
 
     @route("fl", "/fl/upload", methods=["POST"])
     def upload_metric(self, req, **kwargs):
-        """Client pushes its local model metric.
-        Body: {"host_id": "h1", "metric": 0.12}
-        """
+        # Client pushes its local model metric.
+        # Body: {"host_id": "h1", "metric": 0.12}
         try:
+            # Parse JSON request body
             body = json.loads(req.body)
-            host_id = str(body["host_id"])
-            metric = float(body["metric"])
+            # Extract and validate fields
+            host_id = str(body["host_id"]) # ensure host_id is string
+            metric = float(body["metric"]) # ensure metric is float
         except (KeyError, ValueError, json.JSONDecodeError) as exc:
+            # return error message for malformed requests
             return Response(
                 status=400,
                 content_type="application/json",
-				charset="utf-8",
+                charset="utf-8",
                 body=json.dumps({"error": str(exc)}),
             )
 
+        # store the metric in the upload queue that is shared with aggregator
         _upload_queue[host_id] = metric
+
+        # return success response
         return Response(
             content_type="application/json",
-			charset="utf-8",
+            charset="utf-8",
             body=json.dumps({
                 "status": "queued",
                 "host_id": host_id,
@@ -374,17 +350,18 @@ class FLSanitizerAPI(ControllerBase):
             }),
         )
 
+    # Trigger sanitized aggregation over all queued uploads
     @route("fl", "/fl/aggregate", methods=["GET"])
     def trigger_aggregation(self, req, **kwargs):
-        """Trigger sanitized aggregation over all queued uploads."""
         global_model, report = self.controller.run_sanitized_aggregation()
         if report is None:
             return Response(
                 status=400,
                 content_type="application/json",
-				charset="utf-8",
+                charset="utf-8",
                 body=json.dumps({"error": "Upload queue is empty"}),
             )
+
         result = {
             "global_model": global_model,
             "accepted": report.accepted_hosts,
@@ -392,18 +369,19 @@ class FLSanitizerAPI(ControllerBase):
             "poisoning_detected": report.poisoning_detected,
             "n_submitted": report.n_submitted,
         }
+
         return Response(
             content_type="application/json",
-			charset="utf-8",
+            charset="utf-8",
             body=json.dumps(result),
         )
 
+    # Return current queue and last known global model
     @route("fl", "/fl/status", methods=["GET"])
     def get_status(self, req, **kwargs):
-        """Return current queue and last known global model."""
         return Response(
             content_type="application/json",
-			charset="utf-8",
+            charset="utf-8",
             body=json.dumps({
                 "queued_hosts": list(_upload_queue.keys()),
                 "queue_size": len(_upload_queue),
@@ -414,12 +392,12 @@ class FLSanitizerAPI(ControllerBase):
             }),
         )
 
+    # Clear the upload queue to start a new FL round
     @route("fl", "/fl/reset", methods=["GET"])
     def reset_queue(self, req, **kwargs):
-        """Clear the upload queue to start a new FL round."""
         _upload_queue.clear()
         return Response(
             content_type="application/json",
-			charset="utf-8",
+            charset="utf-8",
             body=json.dumps({"status": "queue cleared"}),
         )
