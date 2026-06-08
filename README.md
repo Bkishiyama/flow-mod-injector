@@ -141,7 +141,7 @@ In summary, the Tool 3 pipeline:
 7. Mininet CLI verification proves the evasion property — curl to h2 times out while ping to h2 succeeds, showing the network appears healthy to basic monitoring while the targeted service is permanently unreachable
 
 
-#### Tool 1 Development
+#### Tool 3 Development
 
 | Module | File | Responsibility |
 |---|---|---|
