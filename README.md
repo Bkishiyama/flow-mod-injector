@@ -127,62 +127,18 @@ In summary, I extended this file. I first built ryu_collector.py for Tool 1 (SDN
 - Starts the federated aggregation in which the server combines all client models into the Global IDS.
 - Reports client status back to the controller, e.g., “model uploaded,” “aggregation complete,” “ready for next round.”
 
-#### local_train.py
-
-This program is used for Isolation Forest to train on incoming packet flow features.
-1. Loads the local client’s flow feature CSV
-2. Trains an Isolation Forest model on those features
-3. Saves the trained model so it can be sent to the central controller. 
-
-#### federated.py
-
-This program is the used for the server FL system. It takes the Isolation Forest models trained by each client and combine them into a single Global IDS model. The file:
-1. Loads client models: load_client_models() reads each client’s uploaded model bundle and prepares them for aggregation
-2. Combines client anomaly scores: federated_score_ensemble() merges client predictions into a unified anomaly score for each flow
-3. Determins a shared anomaly threshold: federated_threshold_consensus() computes a global threshold based on client side thresholds
-4. Aggregates and saves the global model: aggregate_and_save() performs the FedAvg style aggregation and writes out the Global IDS model
-5. Runs simulated FL rounds: simulate_fl_rounds() allows you test multiple rounds of federated training without running Mininet
-
-#### sanitize.py 
-
-This program acts as a filter that protects the FL process from malicious client updates. It evaluates each client’s update and decides whether it should be accepted, rejected, or flagged before it is injected to federated.py for aggregation. 
-1. Computes stats on client updates: The mean, standard deviations, and Z scores are calculated when a client sends its vector
-2. Determines poisoned updates: If the poisoning_detected function calculates that the client’s update is not within a normal range, based on a Z-score threshold, it is marked as suspicous.
-3. Accepts or rejects a client update: sanitize_vector_updates stores a list, in HostReport.reason, of accepted and rejected hosts, due to “too large,” “outlier,” or “failed threshold.”
-4. Stores a sanitation report that summarizes:
-   - how many clients submitted
-   - how many were accepted
-   - how many were rejected
-   - which hosts were problematic
-   - the Z threshold used
-
-#### detect.py
-This program takes the Global IDS model, made by federated aggregation, and applies it to new and incoming packet flows. It has two main functions:
-1. detects() function loads the global Isolation Forest model, reads a batch of flow feature rows, and computes:
-   - anomaly scores
-   - binary anomaly labels
-   - ranked anomaly severity
-   - It then writes the detection results to evaluation.py.
-2. detect_local() function runs detection runs detection using a local model instead of the global one. This is used for debugging or comparing local vs. federated performance.
-
-#### evaluate.py 
-
-This program determines the effectiveness of my setup. It takes the outputs from detection.py and computes the standard evaluation metrics. This allows the visualization of results. It does:
-1. Computes metrics: The compute_metrics() functions calculates accuracy, precision, recall, F1 score, and confusion matrix values.
-2. Compares different setups: To ensure the results are worthwhile, different values are compared. For example, I compare local vs. federated and sanitized vs. unsanitized after calculating the results for each.
-3. Plots the confusion matrix to show true positives, false positives, true negatives, and false negatives.
-4. Creates bar charts to compare metrics across multiple setups or models.
-5. Formats and prints an evaluation summary for console output and for later review.
 
 #### Summary
 
-In summary, the Tool 2 pipeline:
-1. Mininet + Ryu collect flow stats
-2. features.py extracts numerical features
-3. local_train.py trains local Isolation Forests
-4. federated.py aggregates them into a Global IDS
-5. detect.py applies that global model to new flows
-6. evaluate.py determines the effectiveness of the system.
+In summary, the Tool 3 pipeline:
+
+1. topology.py builds the Mininet network with three switches, seven hosts, and a passive OVS listener on s1 at port 6654
+2. ryu_collector.py runs on the Ryu controller and records live flow statistics from every switch into CSV files
+3. injector.py Phase 1 passively sniffs the loopback interface and decodes OpenFlow messages on TCP port 6633, confirming the control channel is unencrypted and visible
+4. injector.py Phase 2 connects directly to s1, completes an OpenFlow 1.3 handshake, requests EQUAL role to bypass Ryu's MASTER lock, and injects a permanent high-priority FlowMod that drops all TCP port 80 traffic
+5. ryu_collector.py continues recording flow statistics — HTTP flows from h1 to h2 on s1 drop to zero bytes, capturing the attack's footprint in live_client1.csv automatically
+6. ovs-ofctl dump-flows confirms the rogue rule is installed in s1's flow table with the attacker cookie visible
+7. Mininet CLI verification proves the evasion property — curl to h2 times out while ping to h2 succeeds, showing the network appears healthy to basic monitoring while the targeted service is permanently unreachable
 
 
 #### Tool 1 Development
