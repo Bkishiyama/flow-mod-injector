@@ -660,116 +660,160 @@ sdn-poison-guard/
     └── test_sanitizer.py
 ```
 
-1. The Core Data & Feature Pipeline
+---
+
+### The Core Data & Feature Pipeline
 
 Before any machine learning happens, network traffic has to be captured and turned into numbers a model can understand.
-  - scripts/generate_data.py 
-    - This is the first program of my pipeline as it creates data, or fake network logs. This program generates synthetic network flow logs from scratch without relying on the input of external data. It uses statistical rules to make realistic benign traffic along with specific cyber attacks, including DDoS, port scans, and flow table exhaustion. This approach allows the entire machine learning pipeline to be executed, tested, and verified locally without the need to download massive external packet captures. Once generated, these network flow logs are passed into src/features.py for the next stage of the pipeline. In the next stage, raw data is transformed into a structured feature matrix. In a later phase of the project, this synthetic generator will be replaced with the benchmark CICIDS2019 evaluation dataset to test the model's performance on real world attack traffic.
-  - src/features.py 
-    - This is the second program in my pipeline. It translates the logs, finds 8 mathematical clues, and groups them into bins. This program takes network traffic logs and organizes them such that a Machine Learning (ML) model can understand them. Instead of looking at raw text or random numbers, the program extracts eight specific details, or mathematical features. The features are consistent, measurable clues like how fast data is moving or how many packets are sent. By looking at the features together, the model can determine if a signature pattern is an attack or normal traffic. The program, for example, measures the speed of the traffic, and calculates ratios like packets-per-second, and evens out the numbers so short and long bursts of data can be compared. It also groups thousands of different connection points into a few organized categories, called bins. As an analogy, this is like sorting mail into specific cubbies based on where it needs to go. Finally, the program translates network languages, such as protocols like TCP and UDP, into simple code numbers. By doing this, the program acts as a translator, turning the complex network activity into a clean, uniform spreadsheet of numbers that the AI security model can easily read and identify cyber attacks.
+#### scripts/generate_data.py 
+This is the first program of my pipeline as it creates data, or fake network logs. This program generates synthetic network flow logs from scratch without relying on the input of external data. It uses statistical rules to make realistic benign traffic along with specific cyber attacks, including DDoS, port scans, and flow table exhaustion. This approach allows the entire machine learning pipeline to be executed, tested, and verified locally without the need to download massive external packet captures. Once generated, these network flow logs are passed into src/features.py for the next stage of the pipeline. In the next stage, raw data is transformed into a structured feature matrix. In a later phase of the project, this synthetic generator will be replaced with the benchmark CICIDS2019 evaluation dataset to test the model's performance on real world attack traffic.
+
+#### src/features.py 
+
+This is the second program in my pipeline. It translates the logs, finds 8 mathematical clues, and groups them into bins. This program takes network traffic logs and organizes them such that a Machine Learning (ML) model can understand them. Instead of looking at raw text or random numbers, the program extracts eight specific details, or mathematical features. The features are consistent, measurable clues like how fast data is moving or how many packets are sent. By looking at the features together, the model can determine if a signature pattern is an attack or normal traffic. The program, for example, measures the speed of the traffic, and calculates ratios like packets-per-second, and evens out the numbers so short and long bursts of data can be compared. It also groups thousands of different connection points into a few organized categories, called bins. As an analogy, this is like sorting mail into specific cubbies based on where it needs to go. Finally, the program translates network languages, such as protocols like TCP and UDP, into simple code numbers. By doing this, the program acts as a translator, turning the complex network activity into a clean, uniform spreadsheet of numbers that the AI security model can easily read and identify cyber attacks.
+
 ---
-2. Local Training vs. Federated Aggregation
+
+### Local Training vs. Federated Aggregation
 
 The Federated Learning architecture splits the workload between individual local clients and a central coordinator.
-  - config/fed_config.yaml 
-    - Before any training begins, this configuration file acts as the master settings panel for the entire Federated Learning simulation. Instead of hardcoding values like the number of clients, training rounds, or aggregation strategy directly into the code, all of those parameters are stored here in a single, human-readable file. This makes the system highly flexible. A researcher can change the number of simulated clients or switch aggregation strategies simply by editing this file. It tells every other program in the pipeline how the federated system should behave.
-  - src/local_train.py (The Client Side/trainer) 
-    - This is the third program in my pipeline. It is used to train the AI model. This program takes the "cleaned-up" network clues and uses them to train an AI security model. The model is the Isolation Forest. In Federated Learning, it is directly installed on each individual user's computer. Instead of spending a lot of time studying what normal or safe traffic looks like, an Isolation Forest works like a detective. It hunts for unusual events. It isolates the rare and unusual "outlier" data and signals it as a cyber attack.
-    - Once the local training is finished, the program saves everything together into a neat package, called a bundle. This is merely a newly trained AI model, a data scaler that keeps all the numbers evenly balanced, and a set of local scoring stats used to judge how unusual future traffic might be. This local training process is important for cybersecurity because it protects user privacy. By teaching the AI model directly on the local machine, sensitive network logs never have to be sent over the internet or shared with an outside server.
-  -	src/federated.py (The Coordinator/Server Side) 
-    - This fourth program in the pipeline acts as a central coordinator that brings together all of the individual AI security models trained in the previous step. It simulates a wholistic environment where multiple computers, or the clients, work together over several rounds to build a master AI security model. The server does not see the private network logs of the clients. To create this unified defense, the program takes the local AI models from all the clients and combines their intelligence using one of two strategies: 
-      - **Score Ensemble** acts like a panel of experts averaging out their scores to see how unusual a piece of traffic looks, or
-      - **Threshold Consensus** acts like a democratic vote where the majority must agree before officially declaring the data as a cyber attack.
-  - This process is the core of Federated Learning. It creates a massive, network wide protection shield; every participant benefits from the collective knowledge of the entire group. They will be able to spot advanced threats like DDoS attacks together while keeping their own local data and completely private and secure.
+
+#### config/fed_config.yaml 
+
+Before any training begins, this configuration file acts as the master settings panel for the entire Federated Learning simulation. Instead of hardcoding values like the number of clients, training rounds, or aggregation strategy directly into the code, all of those parameters are stored here in a single, human-readable file. This makes the system highly flexible. A researcher can change the number of simulated clients or switch aggregation strategies simply by editing this file. It tells every other program in the pipeline how the federated system should behave.
+
+#### src/local_train.py (The Client Side/trainer)
+
+This is the third program in my pipeline. It is used to train the AI model. This program takes the cleaned-up network clues and uses them to train an AI security model. The model is the Isolation Forest. In Federated Learning, it is directly installed on each individual user's computer. Instead of spending a lot of time studying what normal or safe traffic looks like, an Isolation Forest works like a detective. It hunts for unusual events. It isolates the rare and unusual outlier data and signals it as a cyber attack. Once the local training is finished, the program saves everything together into a neat package, called a bundle. This is merely a newly trained AI model, a data scaler that keeps all the numbers evenly balanced, and a set of local scoring stats used to judge how unusual future traffic might be. This local training process is important for cybersecurity because it protects user privacy. By teaching the AI model directly on the local machine, sensitive network logs never have to be sent over the internet or shared with an outside server.
+This is the next program in my pipeline. It is used to train the AI model. This program takes the "cleaned-up" network clues and uses them to train an AI security model. The model is the Isolation Forest. In Federated Learning, it is directly installed on each individual user's computer. Instead of spending a lot of time studying what normal or safe traffic looks like, an Isolation Forest works like a detective. It hunts for unusual events. It isolates the rare and unusual "outlier" data and signals it as a cyber attack.
+
+#### src/federated.py (The Coordinator/Server Side) 
+
+This fourth program in the pipeline acts as a central coordinator that brings together all of the individual AI security models trained in the previous step. It simulates a wholistic environment where multiple computers, or the clients, work together over several rounds to build a master AI security model. The server does not see the private network logs of the clients. To create this unified defense, the program takes the local AI models from all the clients and combines their intelligence using one of two strategies: Score Ensemble acts like a panel of experts averaging out their scores to see how unusual a piece of traffic looks, or Threshold Consensus acts like a democratic vote where the majority must agree before officially declaring the data as a cyber attack. This process is the core of Federated Learning. It creates a massive, network wide protection shield where every participant benefits from the collective knowledge of the entire group. They will be able to spot advanced threats like DDoS attacks together while keeping their own local data completely private and secure.
+
+#### src/sanitizer.py (The Byzantine Guard)
+
+This program is Tool 2's core defense mechanism. Before the central coordinator in src/federated.py computes the global model, the sanitizer intercepts every client's submitted metric and screens it for signs of manipulation. It does this using Z-score filtering, a statistical technique that measures how far each submission deviates from the group average. A client whose anomaly score is dramatically higher or lower than its peers, such as a compromised host submitting inflated values to shift the global model's decision boundary, receives a Z-score that exceeds the configured threshold and is rejected before it can influence aggregation. The sanitizer produces a detailed report naming every accepted and rejected host, their submitted values, and their Z-scores. This makes the poisoning detection auditable and reproducible. Without this guard, a single poisoned client can corrupt the global model for every participant in the federated network.
+
+#### sdn_mininet/poisoned_host.py (The Attacker)
+
+This program simulates the malicious insider that the sanitizer is designed to catch. It runs on host h6 inside the Mininet topology and submits deliberately falsified anomaly score metrics to the Ryu controller's federated learning REST endpoint. The falsification uses a configurable multiplier — set to 100 times the legitimate value by default — to produce a submission that is statistically extreme enough to shift the global model threshold if left undetected. Running this program alongside src/sanitizer.py creates a complete attack and defense demonstration where the poisoning attempt and its interception can be observed in the same experiment.
+
 ---
-  2.5 The Zero-Trust Security Guard
-  
-  This is Tool 2 that I am adding to Tool 1.  
-  - src/sanitizer.py
-    -  This program (Step 4.5) is next in the pipeline. Before the coordinator runs the Score Ensemble or Threshold Consensus, it inspects the client data that it receives. When it receives data from a client, the data is compared against the groups data by using a Z-score. The Z-score measures client values against the group's values and determines if there are any deviations. If there are deviations, the data is dropped and data gets logged as a security violation. This way, the data is not injected into the FL model. The FL model is forumulated without corrupted data and thus remains reliable. 
----
-3. Detection & Evaluation
+
+### Detection & Evaluation
 
 Once the global federated model is built, it needs to be put to work and its performance measured.
-  -	src/detect.py 
-    - This fifth program is the production engine, which means it is the part of the project that actually goes to work protecting the network in real time. Once the master AI model is built by the team of computers, this program uses that collective intelligence to analyze live, new network traffic as it flows by.
-    - The program evaluates every connection and automatically tags the data with three specific labels: 
-      - an anomaly score to measure exactly how suspicious the traffic behaves,
-      - an is_anomaly trigger which acts as a yes-or-no alarm button, and
-      - an anomaly rank to grade the threat's severity level from low to critical.
-    - Overall, this is where the AI stops practicing on fake data and starts to diagnose whether new live traffic is benign or a malignant cyber attack.
-  - src/evaluate.py 
-    -	This sixth program acts as the final report card for the AI pipeline as a whole. It tests the master defense AI model to see how well it performs in the real world. To do this, it calculates standard data science metrics that grade the system's intelligence from different angles: 
-      - Accuracy - overall correctness
-      - Precision - how trustworthy its alarms are
-      - Recall - its ability to catch every single threat
-      - F1-Score - the balance between precision and recall
-      - AUC - its overall grading curve
-    - It also shows visual aids
-      - Confusion matrices -  grid charts that show what the AI got right versus what it misdiagnosed
-      - Performance bar charts. 
-    - In essense, this evaluation shows whether the AI is actually effective. A high precision score means the AI won't annoy network administrators with false alarms, while a high recall score shows that the system won't completely miss a malignant attacks.
-  - tests/test_sanitizer.py
-    - This script is for automated verification. Before using the sanitizer in the Ryu controller, we want to test it. Verification should be completed for every condition that is used. ChatGPT provided 29 assertions that should be tested in four different scenarios:
-      - A healthy network where all six hosts are honest. This should show no rejections.
-      - A single poisoned host where host 6 (h6) should be detected and removed.
-      - Edge cases with empty inputs, groups too small for statistical analysis, and all uploads are identical.
-      - Vector sanitation for hosts that upload an array of parameters instead of a single number.
-    - Usage: python3 -m pytest tests/test_sanitizer.py -v      
+
+#### src/detect.py 
+
+This fifth program is the production engine, which means it is the part of the project that actually goes to work protecting the network in real time. Once the master AI model is built by the team of computers, this program uses that collective intelligence to analyze live, new network traffic as it flows by. The program evaluates every connection and automatically tags the data with three specific labels: an anomaly score to measure exactly how suspicious the traffic behaves, an is_anomaly trigger which acts as a yes-or-no alarm button, and an anomaly rank to grade the threat's severity level from low to critical. Overall, this is where the AI stops practicing on fake data and starts to diagnose whether new live traffic is benign or a malignant cyber attack.
+    
+#### src/evaluate.py 
+
+This sixth program acts as the final report card for the AI pipeline as a whole. It tests the master defense AI model to see how well it performs in the real world. To do this, it calculates standard data science metrics that grade the system's intelligence from different angles: Accuracy for overall correctness, Precision for how trustworthy its alarms are, Recall for its ability to catch every single threat, F1-Score for the balance between precision and recall, and AUC for its overall grading curve. It also shows visual aids including confusion matrices that display whether the AI got it right versus what it misdiagnosed, and performance bar charts. This evaluation shows if the AI is effective. High precision scores mean that the AI will not alert network administrators with false alarms, while a high recall score shows that the system will not miss malignant attacks.
+     
 ---
-4. SDN Integration Real Network Emulation 
+
+### SDN Integration with Network Emulation 
 
 The core pipeline can run on synthetic data. The sdn_mininet/ module is used to bridge the gap between simulation and a real SDN environment by using Mininet and a Ryu controller.
-  - sdn_mininet/topology.py 
-    - This program builds a virtual, emulated network from scratch, by using Mininet, a network emulator. It constructs a realistic SDN topology with a controller, switches, and hosts. It then links these components together so they can communicate with each other. Additionally, this program contains built-in traffic generators that simulate both normal user behavior and network attacks, such as DDoS floods or port scans. This appears as a functional simulated internet with a pipeline that generates OpenFlow traffic without using any physical hardware.
-  - sdn_mininet/poisoned_host.py
+
+#### sdn_mininet/topology.py 
+
+This program builds a virtual, emulated network from scratch using Mininet, a network emulator. It constructs a realistic SDN topology with a controller, three switches, and seven hosts, then links these components together so they can communicate with each other. Each switch represents one federated client organization — s1 serves hosts h1, h2, and the Tool 3 attacker h7, s2 serves hosts h3 and h4, and s3 serves hosts h5 and h6. The program contains built-in traffic generators that simulate both normal user behavior and network attacks, including DDoS floods from h4 and port scans from h6. For Tool 3, the topology also configures a passive OpenFlow listener on switch s1 at port 6654 and starts an HTTP server on h2 at port 80, giving the injector a reachable control-plane entry point and a concrete application-layer target to block.
+    
+#### sdn_mininet/poisoned_host.py
+
     - This program is an addition to Tool 1. It is added such that Tool 2 provides an attack. Host 6 runs this attack as an inside attacker. Instead of loading legitimate parameters from its locally trained model, H6 sends corrupted data, or metrics, to the Ryu controller. The simulted attack will need to be sanitized in order to defend against the attack. While this script is produces an attack, the defense is set up in src/sanitizer.py and sdn_mininet/ryu_collector.py. After the Ryu controller, or ryu_collector.py, receives the data from the hosts, the data is passed to sanitizer.py where the metrics are inspected. If it is poisoned, the metrics are dropped and not added to the FL global model. The sanitized data is then sent to federated.py where it aggregates only verified clean uploads from the honest hosts. 
-  - sdn_mininet/ryu_collector.py 
-    - This program runs as an application on top of the Ryu SDN controller, or the "brain" that manages the virtual network's switches. Its job is to act as a data recorder. As traffic flows across the Mininet topology, the Ryu controller continuously receives raw statistics from every switch in the network via the OpenFlow protocol. This program receives those statistics, organizes them into structured rows, and writes them to a CSV file. In short, it is the pipeline's real-time sensor, converting switch data into network flow logs. This is similar to my first phase where I had scripts/generate_data.py make data synthetically.
-    - For Tool 2, I extend the functionality of Tool 1 by adding REST API endpoints. This allows the hosts, in Mininet, to send their local data to the controller. In turn, this allows the sanitizer to receive and process data. The first endpoint, POST /fl/upload, is used for clients to upload their local model metrics. The second endopoint, GET /fl/status, allows users to check the current state of the FL model and get information from it. This program also calls the sanitizer before calculating Federated Averaging (FedAvg). This ensures that the updates are filtered by using statistical analysis. Any suspicious updates from the clients are found in the ryu_sanitizer.log. This part of the novelty such that it does not blindly accept all updates. It filters out suspicious updates before updating the global model.    
-  - sdn_mininet/label_window.py 
-    - After a Mininet experiment finishes running, this program acts as a post-processing annotator. Because the traffic generator in topology.py knows when an attack started and stopped, this program takes the raw CSV of collected flows. It then reviews it and stamps each time window with the correct label, as either "benign" or the specific attack type that was active during that period. This labeled dataset is what gets forwarded to src/features.py for feature extraction. This finishes the bridge between live SDN emulation and machine learning pipeline.
+
+#### sdn_mininet/ryu_collector.py 
+This program runs as an application on top of the Ryu SDN controller, or the brain that manages the virtual network's switches. Its job is to act as a data recorder. As traffic flows across the Mininet topology, the Ryu controller continuously receives raw statistics from every switch in the network via the OpenFlow protocol. This program receives those statistics, organizes them into structured rows, and writes them to a CSV file. In short, it is the pipeline's real-time sensor, converting switch data into network flow logs. This is similar to my first phase where scripts/generate_data.py made data synthetically. After Tool 3 injects its DROP rule, the collector continues running normally, but the flow statistics it records for switch s1 will show HTTP traffic from h1 to h2 dropping to zero bytes, capturing the attacker's footprint in the dataset automatically.
+
+#### sdn_mininet/injector.py (The Control-Plane Attacker)
+
+This program is Tool 3's core attack component. While Tools 1 and 2 operate entirely within the machine learning pipeline, this program attacks the SDN network itself at the protocol layer. It operates in two phases. In Phase 1, it uses Scapy to passively sniff the loopback interface for OpenFlow traffic on TCP port 6633, decoding and printing every message header it observes. This demonstrates that the unencrypted control channel is fully readable by any local process, with no special privileges required beyond a raw socket. In Phase 2, it opens a direct TCP connection to the passive OVS listener on switch s1 at port 6654, completes a legitimate-looking OpenFlow 1.3 handshake, requests EQUAL controller role to bypass Ryu's MASTER lock, and sends a crafted OFPT_FLOW_MOD message. That message installs a permanent high-priority rule that drops all TCP port 80 traffic on s1 while leaving ICMP completely unaffected, so pings continue to succeed while HTTP fails. The Ryu controller never detects this rule.
+
+#### sdn_mininet/label_window.py
+
+After a Mininet experiment finishes running, this program acts as a post-processing annotator. Because the traffic generator in topology.py knows when an attack started and stopped, this program takes the raw CSV of collected flows, reviews it, and stamps each time window with the correct label as either benign or the specific attack type that was active during that period. This labeled dataset is what gets forwarded to src/features.py for feature extraction. This finishes the bridge between live SDN emulation and the machine learning pipeline.
+
 ---
-5. Execution, Orchestration & Environment
+
+### Execution, Orchestration & Environment
 
 These files handle the user interface, automation, environment setup, and containerization of the project.
-  -	cli.py (root entry point) 
-    - This seventh program serves as the main entry point and control center for the user. Instead of forcing you to look through folders and manually run five or six different programs one after the other, this script combines everything into a single, centralized dashboard called a Command-Line Interface (CLI). It allows you to run and manage the entire artificial intelligence pipeline from your terminal using simple commands. For example, typing python cli.py train automatically wakes up the training programs, while typing python cli.py detect activates the production engine to start scanning for cyber attacks. In short, it acts like a universal remote control, making the AI system easy to operate.
-  -	src/cli.py (argparse command routing) 
-    - While the root cli.py serves as the entry point, this program inside the src/ package handles the detailed tasks behind every command. It uses Python's argparse library to define and validate each sub-command, such as generate, train, detect, and evaluate. It then routes the user's input to the correct module. Think of the root cli.py as the front door and this file as the switchboard operator inside, making sure every request reaches the right program with the right arguments.
-    - ChatGPT AI: What command lines do you recommend I include in my program where I use a SDN-FL model that is basic. I can extend my "front door" in Tool 1. In Tool 2, I can add additional commands. A demo command can run a standalone poisoning attack and defense. The sanitize command alllows a user feed a CSV client numbers through the Z-score filter and see a report of that client. The simulate-fl command now has new flags, i.e., --sanitize, --no-sanitize, and --poison h6:100. This allows the suer to toggle the defense on or off and use a poisoned client from the CLI. 
-  -	src/init.py 
-    - This file declares the src/ folder as a Python package. Without it, Python would not recognize the folder as a collection of importable modules. In other words, programs like cli.py and federated.py could not reference each other. It holds the package together behind the scenes.
-  -	Makefile 
-    - This eighth file acts as an automation shortcut. I do the commands in my video, one by one, but this allows you not to do that. The seqeuence: first invents the fake data, next translates it into clean mathematical clues, then training the local AI guards, aggregating them into a consolidated federated model, and finally evaluates the system. In short, it is a script that handles all the heavy lifting, allowing you to test, run, and verify the entire cybersecurity system without entering any commands.
-  -	install.sh 
-    - This shell script is a one time setup assistant designed specifically for Ubuntu 20.04 machines. When ran on a fresh system, it automatically installs all of the necessary system-level software dependencies, such as Python, Mininet, and the Ryu controller. Pip or conda cannot install these on their own. It prepares the host machine's operating system before any Python environment is created.
-  -	requirements.txt 
-    - This standard Python file lists every third party library the project depends on, along with their required versions. When setting up the project in a plain Python virtual environment, running pip install -r requirements.txt reads this list and automatically downloads and installs every dependency in one step. It guarantees that anyone running the project uses the exact same library versions, eliminating the "it works on my machine" problem.
-  -	environment.yml 
-    - This file serves the same purpose as requirements.txt but for users who prefer Conda as their package manager. Running conda env create -f environment.yml builds a fully isolated Conda environment with all the correct dependencies pre-configured. It is particularly useful for researchers and data scientists who rely on Conda to manage complex scientific computing environments.
-  -	Dockerfile 
-    - This file contains the instructions for packaging the entire project into a self-contained Docker image. It tells Docker exactly how to build the environment, which base operating system to use, which packages to install, and which files to copy in, so the project can run identically on any machine. 
-  -	docker-compose.yml 
-    - This file orchestrates multi-container deployments of the project. Rather than starting Docker containers one by one with individual commands, docker-compose.yml defines all the services the project needs, such as the training client and the federated coordinator. It then launches them together with a single docker compose up command. It also handles the networking between containers, making it straightforward to simulate multiple federated clients running simultaneously on one machine.
-  -	.dockerignore 
-    - This configuration file tells Docker which files and folders to exclude when building the image, such as the data/, models/, and results/ directories that are generated at runtime. By excluding these files, the Docker image remains robust.
-  - .gitignore
-    - This file tells Git which files and folders to leave out of version control. For this project, it excludes the three generated runtime directories, data/, models/, and results/. Theire contents are re-creatable by simply running the pipeline and would increase the repository unnecessarily. It also excludes Python cache folders (__pycache__), compiled bytecode (.pyc files), and local environment folders created by pip or Conda.  
+
+#### cli.py (root entry point) 
+
+This seventh program serves as the main entry point and control center for the user. Instead of forcing you to look through folders and manually run five or six different programs one after the other, this script combines everything into a single, centralized dashboard called a Command-Line Interface (CLI). It allows you to run and manage the entire AI pipeline from your terminal using simple commands. For example, typing python cli.py train automatically wakes up the training programs, while using python cli.py detect activates the production engine to start scanning for cyber attacks. It acts like a universal remote control, making the AI system easy to operate.
+
+#### src/cli.py (argparse command routing) 
+
+While the root cli.py serves as the entry point, this program inside the src/ package handles the detailed tasks behind every command. It uses Python's argparse library to define and validate each sub-command, such as generate, train, detect, and evaluate. It then routes the user's input to the correct module. The root cli.py is the front door and this file is the switchboard operator that ensures requests reach the right program with its arguments.
+
+#### src/init.py 
+
+This file declares the src/ folder as a Python package. Without it, Python would not recognize the folder as a collection of importable modules. In other words, programs like cli.py and federated.py could not reference each other. It holds the package together behind the scenes.
+
+#### Makefile 
+
+This eighth file acts as an automation shortcut. I do the commands in my video, one by one, but this allows you not to do that. The seqeuence: first invents the fake data, next translates it into clean mathematical clues, then training the local AI guards, aggregating them into a consolidated federated model, and finally evaluates the system. In short, it is a script that handles all the heavy lifting, allowing you to test, run, and verify the entire cybersecurity system without entering any commands.
+
+#### install.sh 
+
+This shell script is a one-time setup assistant designed specifically for Ubuntu 20.04 VMs. When run on a fresh system, it automatically installs all of the necessary system-level software dependencies, such as Python, Mininet, and the Ryu controller. Pip or conda cannot install these on their own. It prepares the host machine's operating system before any Python environment is created. It also installs scapy system-wide using sudo pip3 so that Tool 3's injector can open raw sockets, which require root-level package access.
+
+ #### requirements.txt
+
+This standard Python file lists every third party library the project depends on, along with the required versions. When setting up the project in a plain Python virtual environment, running pip install -r requirements.txt reads this list and automatically downloads and installs every dependency in one step. It guarantees that running the project uses the same library versions. Tool 3 adds scapy==2.5.0 to this file, pinned to that specific version to avoid compatibility errors with Python 3.8's cryptography library on Ubuntu 20.04.
+
+#### environment.yml
+
+This file serves the same purpose as requirements.txt but for users who prefer Conda as their package manager. Running conda env create -f environment.yml builds a fully isolated Conda environment with all the correct dependencies pre-configured. It is particularly useful for researchers and data scientists who rely on Conda to manage complex scientific computing environments.
+
+#### Dockerfile
+
+This file contains the instructions for packaging the entire project into a self-contained Docker image. It tells Docker exactly how to build the environment, which base operating system to use, which packages to install, and which files to copy in, so the project can run identically on any machine. Note that Tool 3's injector cannot run inside Docker because it requires a live Open vSwitch instance and raw socket access to the host network, neither of which are available inside a container. Tool 3 requires Ubuntu 20.04 natively.
+
+#### docker-compose.yml
+
+This file orchestrates multi-container deployments of the project. Rather than starting Docker containers one by one with individual commands, docker-compose.yml defines all the services the project needs, such as the training client and the federated coordinator. It then launches them together with a single docker compose up command. It also handles the networking between containers, making it straightforward to simulate multiple federated clients running simultaneously on one machine.
+
+#### .dockerignore
+
+This configuration file tells Docker which files and folders to exclude when building the image, such as the data/, models/, and results/ directories that are generated at runtime. By excluding these files, the Docker image remains robust.
+
+#### .gitignore
+
+This file tells Git which files and folders to leave out of version control. For this project, it excludes the three generated runtime directories, data/, models/, and results/. Their contents are re-creatable by simply running the pipeline and would increase the repository unnecessarily. It also excludes Python cache folders, compiled bytecode files, and local environment folders created by pip or Conda.
+
 ---
-6. Generated Data Directories
+
+### Generated Data Directories
 
 These three folders are not committed to the repository and are created automatically when the pipeline runs.
-  -	data/ 
-    - This folder is the pipeline's working scratchpad. It stores the synthetic network flow logs produced by scripts/generate_data.py, or the real flow logs captured by sdn_mininet/ryu_collector.py. It also stores the labeled and feature-extracted datasets produced by downstream stages. The data is re-generatable, so it is listed in .gitignore.
-  -	models/ 
-    - After each round of local or federated training, the trained model bundles,  including the Isolation Forest model, the data scaler, and the local scoring statistics are saved here. This allows the detection engine in src/detect.py to load a pre-trained model without needing to re-run the full training pipeline. Like the data/ folder, it is git-ignored since models can be reproduced.
-  -	results/ 
-    - This folder collects and stores all outputs produced by src/evaluate.py, which includes the confusion matrix images, performance bar charts, and any saved metric reports.
+
+#### data/
+
+This folder is the pipeline's working scratchpad. It stores the synthetic network flow logs produced by scripts/generate_data.py, or the real flow logs captured by sdn_mininet/ryu_collector.py. It also stores the labeled and feature-extracted datasets produced by downstream stages. The data is re-generatable, so it is listed in .gitignore.
+
+#### models/
+
+After each round of local or federated training, the trained model bundles,  including the Isolation Forest model, the data scaler, and the local scoring statistics are saved here. This allows the detection engine in src/detect.py to load a pre-trained model without needing to re-run the full training pipeline. Like the data/ folder, it is git-ignored since models can be reproduced.
+
+#### results/
+
+This folder collects and stores all outputs produced by src/evaluate.py, which includes the confusion matrix images, performance bar charts, any saved metric reports, and the per-round sanitizer audit log written by Tool 2's simulation.
+
 ---
-7. Documentation
-  -	README.md 
-    - The documentation guide containing setup instructions, structural overviews, and evaluation metrics to verify the project is working exactly as intended.
+
+### Documentation
+
+#### README.md
+
+The documentation guide containing setup instructions, system design overviews, and evaluation metrics to ensure the project is working correctly.
+
 ---
 
 ## Known Issues
