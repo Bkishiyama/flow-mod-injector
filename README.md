@@ -102,30 +102,40 @@ Host 7 (h7) is the attacker that injects a rule into switch 1 (s1) to drop http 
 
 #### topology.py
 
-This is the file that builds Mininet virtual network.
-Inside this file, the build() method:
-- creates hosts and switches
-- links the hosts ↔ switches
-- links switches ↔ switches
-- assigns IPs
-- sets the link parameters
-- prepares the network for traffic generation
-  - start_benign_traffic(): Starts normal background traffic for training.
-  - start_attack_traffic(): Starts malicious traffic for labeling and testing.
-  - label_attack_flows(): Runs your labeling script to mark attack flows.
-  - run(): Starts Mininet, launches traffic, and labels data flow. 
-ryu_collector.py
-This file is for collecting flow stats, and where I added REST endpoints to upload metrics - for Tool 2. The program has a SDNSanitizerController class , a data traffic manager, does:
-- Negotiates traffice when a switch connects, Ryu asks: “What OpenFlow features do you support?”
-- Deals with packets that the switch sends to the controller, e.g. an unknown MAC, ARP request, or packets that miss the flow table.
-- Receive flow statistics reports from switches, e.g., number of bytes, packets, and match fields.
-- Polls switches for updated stats.
+This file builds the Mininet virtual network for Tool 3. Inside this file, the `build()` method:
 
-In summary, I extended this file. I first built ryu_collector.py for Tool 1 (SDN Flow Log Collection). I expanded it to act as the REST API interface for Tool 2, my federated learning system. I added endpoints that:
-- Uploads new metrics from each client to the federated model as hosts push flow feature summaries or anomaly scores
-- Send client side model updates to the central server, i.e., Isolation Forest parameters.
-- Starts the federated aggregation in which the server combines all client models into the Global IDS.
-- Reports client status back to the controller, e.g., “model uploaded,” “aggregation complete,” “ready for next round.”
+- Creates three switches (s1, s2, s3) and seven hosts (h1–h6 and h7 as the attacker)
+- Links hosts to their assigned switches: h1, h2, and h7 to s1; h3 and h4 to s2; h5 and h6 to s3
+- Links switches to each other in a line: s1 ↔ s2 ↔ s3
+- Assigns static IPs and MACs to every host so the topology is reproducible across machines
+- Places h7 on s1 and the injected FlowMod affects traffic between h1 and h2 on s1
+
+The `run()` method extends the Tool 1 and Tool 2 setup with two additions for Tool 3:
+
+- Configures a passive OVS listener on s1 at `ptcp:6654` alongside the existing Ryu connection at `tcp:127.0.0.1:6633`, giving the injector a direct OpenFlow entry point to the switch without disrupting the primary controller session
+- Starts an HTTP server on h2 at port 80, establishes an application-layer target that is reachable before injection and then unreachable after it
+
+The traffic generation methods are:
+
+- `start_benign_traffic()`: Starts normal background traffic including iperf3 TCP and UDP streams, periodic pings, and HTTP requests from h1 to h2 at port 80, establishing a baseline flow pattern in live_client1.csv before the attack fires
+- `start_attack_traffic()`: Starts Tool 1's malicious traffic, DDoS SYN flood from h4 and port scan from h6, for labeling and testing
+- `start_inject_attack()`: Launches injector.py from h7 using --skip-sniff, triggering Phase 2 after 10 seconds of benign baseline traffic so the before and after is visible in the collected flow data
+- `label_attack_flows()`: Records the attack window timestamp and prints the labeling command for post-processing with label_window.py
+- `run()`: Starts Mininet, configures the passive OVS listener, launches traffic generators in sequence, and drops into the interactive CLI - for manual verification
+
+
+#### ryu_collector.py
+
+This file is the Ryu controller application that manages the virtual network and collects flow statistics. The `SDNSanitizerController` class is the data traffic manager that:
+
+- Negotiates the OpenFlow session when a switch connects: Ryu asks what OpenFlow features the switch supports and installs a table-miss flow entry so unmatched packets are forwarded to the controller rather than silently dropped
+- Handles packets that switches send to the controller, such as unknown MACs, ARP requests, and packets that miss the flow table, and installs learned forwarding rules reactively
+- Receives flow statistics reports from switches: number of bytes, packets, duration, and match fields, and then writes them to per-client CSV files
+- Polls all connected switches on a fixed interval to collect updated stats continuously throughout the experiment
+
+In summary, this file has been extended across all three tools. I first built `ryu_collector.py` for Tool 1 to handle SDN flow log collection. I expanded it for Tool 2 to act as the REST API interface for the federated learning system, adding endpoints that upload client metrics, receive Isolation Forest parameters, trigger federated aggregation, and report client status back to the controller.
+
+For Tool 3, I made no code changes to `ryu_collector.py`. The injector bypasses this file entirely by connecting directly to Open vSwitch rather than communicating through the Ryu REST API. After the FlowMod is injected, the collector continues running and polling normally, but the flow statistics it records for s1 will show HTTP traffic from h1 to h2 dropping to zero bytes and zero packets. The controller never receives an alert, never logs a warning, and never learns a foreign rule was installed. The evidence is shown from the controller's perspective is the statistical change in the CSV data, which is what Tool 1's Isolation Forest is trained to detect.
 
 
 #### Summary
@@ -136,9 +146,9 @@ In summary, the Tool 3 pipeline:
 2. ryu_collector.py runs on the Ryu controller and records live flow statistics from every switch into CSV files
 3. injector.py Phase 1 passively sniffs the loopback interface and decodes OpenFlow messages on TCP port 6633, confirming the control channel is unencrypted and visible
 4. injector.py Phase 2 connects directly to s1, completes an OpenFlow 1.3 handshake, requests EQUAL role to bypass Ryu's MASTER lock, and injects a permanent high-priority FlowMod that drops all TCP port 80 traffic
-5. ryu_collector.py continues recording flow statistics — HTTP flows from h1 to h2 on s1 drop to zero bytes, capturing the attack's footprint in live_client1.csv automatically
+5. ryu_collector.py continues recording flow statistics; HTTP flows from h1 to h2 on s1 drop to zero bytes, capturing the attack's footprint in live_client1.csv automatically
 6. ovs-ofctl dump-flows confirms the rogue rule is installed in s1's flow table with the attacker cookie visible
-7. Mininet CLI verification proves the evasion property — curl to h2 times out while ping to h2 succeeds, showing the network appears healthy to basic monitoring while the targeted service is permanently unreachable
+7. Mininet CLI verification will prove the evasion; curl to h2 times out while ping to h2 succeeds - shows the network as healthy to monitoring while the targeted service is unreachable
 
 
 #### Tool 3 Development
