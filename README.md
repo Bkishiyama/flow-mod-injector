@@ -250,14 +250,14 @@ cookie=0xdeadbeefcafe0001, priority=40000,
 tcp, tp_dst=80, actions=drop
 ```
 
-|Property|Expected Value|Notes|
+| Property | Expected Value | Notes |
 |---|---|---|
-|cookie|0xdeadbeefcafe0001|This indicates the injected rule is from attacker and not Ryu|
-|priority|40000|Overrides any of Ryu's rules due to higher priority|
-|match|tcp,tp_dst=80|Only HTTP(80) is affected|
-|actions|drop|packets get dropped
-|idle_timeout|default=0|Rule never expires if inactive|
-|hard_timeout|default=0|Rule remains with no expiration|
+| cookie | 0xdeadbeefcafe0001 | This indicates the injected rule is from attacker and not Ryu |
+| priority | 40000 | Overrides any of Ryu's rules due to higher priority |
+| match | tcp,tp_dst=80 | Only HTTP(80) is affected |
+| actions | drop | packets get dropped |
+| idle_timeout | default=0 | Rule never expires if inactive |
+| hard_timeout | default=0 | Rule remains with no expiration |
 
 If no results are shown, FlowMod is not successful. TLS is not used so it should be successful; otherwise, it's a programming issue.
 
@@ -275,7 +275,7 @@ mininet> h1 curl --max-time 3 http://10.0.0.2/
 
 A user can verify it is working by observing a connection timeout or seeing "Operation timed out." This means HTTP traffic has stopped and h2 does not receive traffic from h1 - it has stopped by s1.
 
-##### Test 2: Evasion Occurred
+##### Test 2: Evasion Occurs
 
 In the mininet CLI, in Terminal 2:
 
@@ -291,50 +291,20 @@ Tools 1 and 2 used a dataset. Tool 3 does not use a dataset for testing. It uses
 
 ### Results
 
-#### Synthetic Pipeline Results
+For Tool 3, all phases tested and passed. As with previous tools, Ubuntu 20.04 inside of VirtualBox is used. Mininet installed within this, version 2.3.1, along with Ryu controller, version 4.34. The Open vSwitch is version 2.13.8. Python 3.8 is used in Ubuntu 20.04 and not upgraded. 
 
-```
-        label  accuracy  precision  recall     f1   roc_auc
-    Federated    0.8535     0.9565  0.0948 0.1725    0.7655
-Local:client1    0.8632     0.8571  0.1810 0.2989    0.8496
-Local:client2    0.8722     0.6690  0.4095 0.5080    0.7606
-Local:client3    0.8771     0.9231  0.2586 0.4040    0.8291
-```
-IN PROGRESS - UPDATE and REMOVE when completed
+In summary, testing includes the passing of each of these tests:
 
-**Key findings:**
-- The federated model achieves **very high precision (0.96)** or with low false positives.
-- **ROC-AUC of 0.77** shows meaningful separation between attack and benign traffic in score space.
-- Local models trained on one client's data perform poorly on other clients' data - demonstrating the value of federated aggregation.
+| Test | Results |
+|---|---|
+| Phase 1: sniff decodes OpenFlow message | ECHO_REQUEST in plaintext is seen |
+| Phase 2: handshake | HELLO, FEATURES_REPLY is seen |
+| EQUAL role request: accepted | ROLE_REPLY type=25 is seen |
+| FlowMod rule installed in s1 | look for cookie=0xdeadbeefcafe0001 with dump-flows |
+| HTTP from h1 to h2 is blocked | times out is seen |
+| h1 pings h2 | ICMP traffic shows 0% packet loss |
 
-IN PROGRESS - UPDATE and REMOVE when completed
-
-#### Live Mininet + Ryu Results
-
-```
-        label  accuracy  precision  recall     f1
-    Federated    1.0000     1.0000  1.0000 1.0000
-Local:live_c1    0.0348     1.0000  0.0348 0.0673
-Local:live_c2    0.0498     1.0000  0.0498 0.0948
-Local:live_c3    0.0348     1.0000  0.0348 0.0673
-```
-
-The live results demonstrate the core value of the federated approach: local models trained on one switch's traffic perform poorly on another switch's data (3-5% recall), while the federated model combining all three achieves dramatically better detection.
-
-IN PROGRESS - UPDATE and REMOVE when completed
-
-### Known Issues and Limitations
-
-| Limitation | Impact | Notes |
-|---|---|---|
-| L2 flow collection | MAC addresses instead of IPs in live mode | Ryu learning switch installs L2 flows; IP fields absent from match |
-| Simple FedAvg | No formal privacy guarantee | No secure aggregation or differential privacy |
-| Classical ML only | Less expressive than deep models | Isolation Forest is fast and interpretable |
-| Offline evaluation | Not real-time | Processes static CSV logs; not integrated with a live controller |
-| Manual labeling | Attack window labeled by timestamp | Requires noting attack start time and running label_window.py |
-| Python 3.8 required | Ubuntu 20.04 ships with Python 3.8 | All files use `from __future__ import annotations` for compatibility |
-
-IN PROGRESS - UPDATE and REMOVE when completed
+Tools 1 and 2 are not tested. Further testing should show any TCP/HTTP traffic is dropped from Tool 1. Tool 2 should not affect this testing since it is limited to the FL model and poisons the metrics that flow on a separate path.
 
 ---
 
@@ -604,7 +574,7 @@ sudo mn -c
 ---
 
 ## CLI Reference
-IN PROGRESS - UPDATE and REMOVE when completed
+
 | Command | Description |
 |---|---|
 | `generate-data` | Generate synthetic SDN flow CSVs for N clients |
@@ -831,9 +801,9 @@ The documentation guide containing setup instructions, system design overviews, 
 
 ---
 
-## Known Issues
+## Known Issues and Limitations
 
-IN PROGRESS - UPDATE and REMOVE when completed
+Includes Tools 1, 2, and 3. Tool 3 appears at the end.
 
 | Limitation | Notes |
 |---|---|
@@ -843,6 +813,15 @@ IN PROGRESS - UPDATE and REMOVE when completed
 | Offline evaluation | Static CSV logs; not integrated with a live SDN controller |
 | Manual attack labeling | Must note timestamp and run label_window.py after the run |
 | Python 3.8 compatibility | All files use `from __future__ import annotations` for type hint support |
-| FL updates | Local models do not improve | Global model does not update local hosts after aggregation |
-| Test rejection | Needs more clients' data | Lower Z threshold to 1.0 in fed_config.yaml |
+| FL updates | Local models do not improve; Global model does not update local hosts after aggregation |
+| Test rejection | Needs more clients' data; Lower Z threshold to 1.0 in fed_config.yaml |
+
+| Tool 3 Limitations | Notes |
+|---|---|
+| scapy==2.50 | Resolved issue; newer versions conflict with Python 3.8 |
+| Ryu may prevent the EQUAL role | This may be a security issue resolution by Ryu |
+| Routine must be strictly followed | System will not work if commands fall out of order |
+| Ryu controller setup delays | Must not start Mininet before Ryu |
+| Some commands need sudo | I changed commands to sudo |
+| Cleanup commands needed for retesting | If this is not done -> unpredictability |
 
