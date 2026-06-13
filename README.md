@@ -217,23 +217,47 @@ IN PROGRESS - UPDATE and REMOVE when completed
 
 ### Testing Methodology
 
-#### Dataset
-The system includes a **synthetic SDN flow generator** (`scripts/generate_data.py`).
-This produces realistic benign and attack traffic without a download.
-It can also be evaluated using public datasets such as UNSW-NB15 or CICDDoS2019.
-In this case, the dataset should be formatted as a CSV with the following columns: `src_ip, dst_ip, src_port, dst_port, protocol, bytes, packets, duration, flags, label`.
+#### Overview
+Tool 3 is a bit different from Tools 1 and 2. Tool 3 attacs at the network layer. Tool 2 attacked the FL learning model. I do not generate the standard metrics, e.g., F1 score or confusion matrix. To evaluate Tool 3, I look to see if the injected FlowMod disrupts HTTP traffic but allows pings to go through. 
+The system includes a **synthetic SDN flow generator** (`scripts/generate_data.py`). 
 
-IN PROGRESS - UPDATE and REMOVE when completed
+I use three phases to evaluate Tool 3.
 
-#### Synthetic Attack Types
+#### Phase 1
 
-| Attack | Characteristics | Client Skew |
+Phase 1 of the injector demonstrates that the OpenFlow control channel is readable and there is no decryption or special access. The evaluation criterion is simple. When the injector runs in sniff mode, it must decode and print at least one valid OpenFlow 1.3 message from the loopback interface before Phase 2 starts.
+
+```text
+[SNIFF] -> message in plain text
+[*] Traffic is unencrypted
+[*] Phase 2 can now start
+```
+
+This confirms that Ryu's keepalive messages, handshakes, and flow statistics requests are all transmitted in plaintext and fully parseable by a passive observer without credentials.
+
+#### Phase 2
+
+In Phase 2, the FlwoMod injection is accepted by the Open vSwitch and gets installed into s1's flow table. The command used to verify this:
+
+```bash
+sudo ovs-ofctl dump-flows s1 -O OpenFlow13
+```
+
+In turn, the following result will appear:
+
+```text
+cookie=0xdeadbeefcafe0001, priority=40000,
+tcp, tp_dst=80, actions=drop
+```
+
+|Property|Expected Value|Notes|
 |---|---|---|
-| DDoS | High bytes/packets, short duration, few dst IPs | Heavy in Client 2 |
-| Port Scan | Tiny packets, many unique dst_ports, SYN flags | Heavy in Client 3 |
-| Flow Table Exhaustion | Random src IPs, all ports, tiny packets | Heavy in Client 3 |
-
-IN PROGRESS - UPDATE and REMOVE when completed
+|cookie|0xdeadbeefcafe0001|This indicates the injected rule is from attacker and not Ryu|
+|priority|40000|Overrides any of Ryu's rules due to higher priority|
+|match|tcp,tp_dst=80|Only HTTP(80) is affected|
+|actions|drop|packets get dropped
+|idle_timeout|default=0|Rule never expires if inactive|
+|hard_timeout|default=0|Rule remains with no expiration|
 
 #### Experimental Setup
 
