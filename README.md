@@ -208,8 +208,14 @@ IN PROGRESS - UPDATE and REMOVE when completed
 | CLI | argparse | No extra dependencies & easy to extend |
 | Config | PyYAML | Easy to read FL simulation config |
 | Graphs | matplotlib, seaborn | Standard evaluation |
-
-IN PROGRESS - UPDATE and REMOVE when completed
+| Packet Captures | Scapy 2.5.0 | Passive sniffer decodes raw TCP payloads and parses OpenFlow headers |
+| Raw sockets | Python socket stdlib | For Phase 2 injection; opens TCP connection to OVS listener; builds binary OpenFlow format |
+| Binary protocol | Python struct stdlib | Encodes and Decodes OpenFlow message headers, OXM match TLV, and body fields |
+| Network emulation | Mininet 2.3.1b4 | Creates hosts and switches on Ubuntu 20.04 |
+| SDN Controller | Ryu 4.3.4 | A python OpenFlow 1.3 controller, with unencrypted channels |
+| Virtual Switch | Open vSwitch 2.13.8 | For the data plane OpenFlow protocol; ptcp:6654 passive listner mode; allows second controller |
+| OpenFlow protocol | version 1.3 | OvS and Ryu default to version 1.3 |
+| Threading | Python threading stdib | Allows sniffer and injector to run same time |
 
 ---
 
