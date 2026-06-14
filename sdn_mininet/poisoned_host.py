@@ -1,30 +1,25 @@
-""" sdn_mininet/poisoned_host.py
-Black hat Host -> A Model Poisoning Attack
-
-This script runs on the Mininet host, h6, to simulate an adversarial
-insider attack. When triggered, it loads the host's legitimately trained
-local model, corrupts the metric by using a large multiplier, then
-uploads this poisoned value to the Ryu controller's FL endpoint.
-
-This progrom is for the Tool 2 [!] attack. The [!] defense is set up in
-src/sanitizer.py and sdn_mininet/ryu_collector.py.
-
-Usage inside Mininet:
-- On h6 terminal:
-python3 sdn_mininet/poisoned_host.py --controller-ip 10.0.0.1 --multiplier 100
-- Healthy upload, i.e., no poisoning - for control group testing:
-python3 sdn_mininet/poisoned_host.py --controller-ip 10.0.0.1 --host h6 --no-poison
-
-Workflow:
-Step 1: Start Ryu controller:   ryu-manager sdn_mininet/ryu_collector.py
-Step 2: Start Mininet topology: sudo python3 sdn_mininet/topology.py
-Step 3: h1–h5 upload normally (healthy clients)
-Step 4: h6 runs this script with --multiplier 100  (poisoning attack)
-Step 5: GET /fl/aggregate on controller -> and observe sanitizer DROP h6
-Step 6: Re-run h6 with --no-poison -> and observe sanitizer ACCEPT h6
-"""
-
 from __future__ import annotations
+#!/usr/bin/env python3
+
+""" sdn_mininet/poisoned_host.py
+An attacker executes a FL Model Poisoning Attack. Here, the host, h6,  will 
+simulate an adversarial insider attack. Upon executed, it loads the host's 
+trained local model, then corrupts the metric by multipling it by 100. After,
+it uploads this poisoned value to the Ryu controller's FL endpoint.
+This progrom is the Tool 2 attack. For the defense side, refer to
+src/sanitizer.py and sdn_mininet/ryu_collector.py.
+Usage inside Mininet terminal, launch attack:
+python3 sdn_mininet/poisoned_host.py --controller-ip 10.0.0.1 --multiplier 100
+- Compare a healthy upload, without poisoning, use:
+python3 sdn_mininet/poisoned_host.py --controller-ip 10.0.0.1 --host h6 --no-poison
+Workflow:
+Step 1: Start Ryu controller in terminal 1: ryu-manager sdn_mininet/ryu_collector.py
+Step 2: Start Mininet topology in terminal 2: sudo python3 sdn_mininet/topology.py
+Step 3: h1–h5 upload normally as healthy clients in terminal 3
+Step 4: h6 runs this script with --multiplier 100 as poisoning attack in terminal 3
+Step 5: GET /fl/aggregate on controller -> and observe sanitizer DROP h6
+Step 6: Re-run h6 with --no-poison -> to compare 
+"""
 
 import argparse
 import json
@@ -44,7 +39,8 @@ DEFAULT_MULTIPLIER = 100.0  # Multiplied against the legitimate metric for attac
 DEFAULT_MODEL_DIR = "models"
 
 
-"""Helper function to upload metric to Ryu REST endpoint
+"""
+Helper function to upload metric to Ryu REST endpoint
 POST the host's model metric to the Ryu controller's FL upload endpoint.
 ---Parameters---
 host_id: Host identifier, e.g. 'h6'
@@ -96,7 +92,8 @@ def load_local_metric(host_id: str, model_dir: str = DEFAULT_MODEL_DIR) -> Optio
     return float(threshold) if threshold is not None else None
 
 
-""" sanitizer demo where no Ryu is needed
+"""
+sanitizer demo where no Ryu is needed
 Runs a local console demonstration of the sanitizer without Ryu or Mininet.
 Useful for video demos and local testing.
 """
