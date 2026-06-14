@@ -1,5 +1,6 @@
 from __future__ import annotations
 #!/usr/bin/env python3
+
 """ sdn_mininet/ryu_collector.py
 This is the Ryu SDN Controller with Flow Stats Collector,
 with Byzantine-Robust Model Poisoning Defense
@@ -21,6 +22,7 @@ GET /fl/reset -> clear upload queue for next FL round
 Usage:
 ryu-manager sdn_mininet/ryu_collector.py --observe-links
 """
+
 import csv
 import json
 import os
