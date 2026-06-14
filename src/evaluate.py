@@ -1,14 +1,10 @@
 from __future__ import annotations
-
 #!/usr/bin/env python3
-"""
-evaluate.py — Model Evaluation Script
 
-This file compares our anomaly detection predictions against 
-ground-truth labels (used only for testing; never during training).
-
-Calculate metrics like Accuracy, Precision, Recall, and F1.
-Generate confusion matrices and comparison chart.
+""" evaluate.py — Model Evaluation Script
+This file compares our anomaly detection predictions against ground-truth 
+labels (for testing only and not for training). Calculate metrics: Accuracy, 
+Precision, Recall, and F1. Generate confusion matrices and comparison chart.
 """
 
 import os
@@ -33,7 +29,6 @@ except ImportError:
     print("[Warning] matplotlib/seaborn not installed. Plots will be skipped.")
 
 
-
 # Compute metrics
 # Calculate accuracy, precision, recall, F1.
 def compute_metrics(
@@ -48,7 +43,6 @@ def compute_metrics(
     prec = precision_score(y_true, y_pred, zero_division=0)
     rec = recall_score(y_true, y_pred, zero_division=0)
     f1 = f1_score(y_true, y_pred, zero_division=0)
-    
     cm = confusion_matrix(y_true, y_pred, labels=[0, 1])
 
     result = {
@@ -68,12 +62,9 @@ def compute_metrics(
             result["roc_auc"] = round(auc, 4)
         except ValueError:
             result["roc_auc"] = None
-
     if verbose:
         _print_report(result)
-
     return result
-
 
 
 # Compare multiple models
@@ -85,9 +76,7 @@ def compare_setups(results: list[dict]) -> pd.DataFrame:
         # Remove confusion matrix for the table
         row = {k: v for k, v in r.items() if k != "confusion_matrix"}
         rows.append(row)
-    
     return pd.DataFrame(rows)
-
 
 
 # Plot and save a confusion matrix heatmap
@@ -161,7 +150,6 @@ def plot_comparison_bar(
         print(f"[Eval] Saved {metric} comparison chart -> {out_path}")
     else:
         plt.show()
-    
     plt.close(fig)
 
 
