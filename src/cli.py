@@ -1,24 +1,23 @@
+from __future__ import annotations
 #!/usr/bin/env python3
-"""
-cli.py — SDN Federated Anomaly Detection Tool
 
+""" cli.py 
+SDN Federated Anomaly Detection Tool
 This is the main command-line interface for our Federated Learning 
 SDN Anomaly Detection project.
-
-Common commands:
+Commands:
   python3 cli.py generate-data --out-dir data/ --n-clients 3
   python3 cli.py train-local --data data/client1.csv --out models/client1.pkl
   python3 cli.py federated-aggregate --models "models/client*.pkl" --out models/global.pkl
   python3 cli.py detect --model models/global.pkl --data data/test.csv --top-n 10
   python3 cli.py evaluate --model models/global.pkl --data data/test_labeled.csv --out results/
-
+Do this:
 Run `python3 cli.py <command> --help` for more options on each command.
 """
 
 import argparse
 import sys
 import os
-
 
 # Subcommand Handlers
 # Each function handles one CLI command
@@ -166,7 +165,6 @@ def cmd_simulate_fl(args):
     
     print(f"\n[!] FL Simulation finished - {len(round_results)} rounds completed.")
 
-
 # Generate fake SDN flow data for testing the pipeline
 def cmd_generate_data(args):
     from scripts.generate_data import generate_all_clients
@@ -181,7 +179,6 @@ def cmd_generate_data(args):
     
     print(f"\n[!] Synthetic data generated in: {args.out_dir}")
     print(f"    Created {args.n_clients} client datasets.")
-
 
 
 # Argument Parser Setup
@@ -244,7 +241,7 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-# main function 
+# main
 def main():
     parser = build_parser()
     args = parser.parse_args()
