@@ -1,3 +1,6 @@
+from __future__ import annotations
+#!/usr/bin/env python3
+
 """ tests/test_sanitizer.py
 This is for Tool 2 Unit Tests: Model Poisoning Sanitizer
 Testing cover:
@@ -10,8 +13,6 @@ Testing cover:
 
 Run with -> python3 -m pytest tests/test_sanitizer.py -v
 """
-
-from __future__ import annotations
 
 import math
 import pytest
@@ -185,7 +186,6 @@ class TestEdgeCases:
         # The strict setting must reject at least as many hosts as the loose one.
         assert report_strict.n_rejected >= report_loose.n_rejected
 
-
 # Vector sanitizer
 class TestVectorSanitizer:
     # All hosts provide similar, low‑variance vectors.
@@ -231,7 +231,6 @@ class TestVectorSanitizer:
         # Since each input vector has 2 elements, the output should also be length 2
         # This ensures the sanitizer does not change vector shape during processing
         assert len(vec) == 2
-
 
 # SanitizationReport
 # Run the sanitizer on a clean (healthy) dataset
