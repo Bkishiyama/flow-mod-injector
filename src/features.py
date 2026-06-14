@@ -1,9 +1,8 @@
 from __future__ import annotations
-
 #!/usr/bin/env python3
-"""
-features.py — SDN Flow Log Feature Extraction
 
+""" features.py
+SDN Flow Log Feature Extraction
 This file is responsible for loading raw SDN flow data from CSV files 
 and turning it into clean numeric features for our models to use.
 - Loads and cleans the data
@@ -33,7 +32,6 @@ PROTOCOL_MAP = {
     "other": 3,
 }
 
-
 # Load raw flow data from CSV
 # Load a CSV file containing SDN flow logs
 def load_flows(path: str) -> pd.DataFrame:
@@ -42,9 +40,7 @@ def load_flows(path: str) -> pd.DataFrame:
     
     # Standardize column names (lowercase, no spaces)
     df.columns = [c.strip().lower().replace(" ", "_") for c in df.columns]
-    
     return df
-
 
 # Main preprocessing function
 # Convert raw dataframe into numeric features ready for the model
@@ -106,7 +102,6 @@ def preprocess(df: pd.DataFrame, scaler: StandardScaler = None):
         X = scaler.transform(X)
 
     return X, scaler, feature_names
-
 
 # Extract ground truth labels (for evaluation only)
 # Get true labels if they exist in the dataset (used only for evaluation)
