@@ -7,8 +7,8 @@
 # - Tools: hping3, nmap, iperf3
 # - Scapy (system-wide for Tool 3 raw socket access)
 # Usage:
-#   chmod +x install.sh
-#   ./install.sh
+# chmod +x install.sh
+# ./install.sh
 # Last updated: June 14, 2026, 2130 hrs, I converted this from Ubuntu 20.04 to 22.04.
 
 set -euo pipefail
@@ -21,7 +21,6 @@ info() { echo -e "${GREEN}[install]${NC} $*"; }
 warn() { echo -e "${YELLOW}[warning]${NC} $*"; }
 
 # Step 1: System packages
-
 info "Updating package lists..."
 sudo apt-get update -qq
 
@@ -72,7 +71,7 @@ git checkout 2.3.1b4
 
 # Ubuntu 22.04 patch: newer kernel headers moved sched.h to linux/sched.h.
 # Without this patch, mnexec fails to compile with:
-#   fatal error: sched.h: No such file or directory
+# fatal error: sched.h: No such file or directory
 sed -i 's/#include <sched.h>/#include <linux\/sched.h>/' mnexec.c 2>/dev/null || true
 info "[!] mnexec kernel header patch applied"
 
@@ -96,9 +95,9 @@ fi
 
 # Step 4: Ryu SDN framework
 # Confirmed working combination for Ubuntu 22.04 / Python 3.10:
-#   eventlet 0.33.3  — only version that clears the is_timeout error
-#   dnspython 2.8.0  — 1.x uses collections.MutableMapping removed in 3.10
-#   greenlet 3.5.1   — required by eventlet 0.33.3
+# eventlet 0.33.3 -> only version that clears the is_timeout error
+# dnspython 2.8.0 -> 1.x uses collections.MutableMapping removed in 3.10
+# greenlet 3.5.1 -> required by eventlet 0.33.3
 # Three source patches are also required because Ryu is unmaintained
 # and was written before Python 3.10 and eventlet 0.33.x were released.
 
@@ -165,7 +164,6 @@ else
 fi
 
 # Step 5: Python dependencies
-
 info "Installing Python dependencies..."
 pip3 install --user -r requirements.txt
 
@@ -181,13 +179,11 @@ sudo pip3 install "scapy==2.5.0"
 info "[!] scapy==2.5.0 installed system-wide"
 
 # Step 7: Quick Mininet self-test
-
 info "Running Mininet connectivity self-test..."
 sudo mn --test pingall 2>&1 | tail -5
 sudo mn -c 2>/dev/null || true
 
 # Display Results
-
 echo ""
 echo -e "${GREEN}------------------------------------------------${NC}"
 echo -e "${GREEN}  --> Installation complete (Ubuntu 22.04)!${NC}"
