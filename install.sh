@@ -1,17 +1,15 @@
 #!/usr/bin/env bash
-# install.sh — Ubuntu 22.04 LTS setup for SDN Federated Anomaly Detection Lab
-#
+# install.sh
+# Ubuntu 22.04 LTS setup for SDN Federated Anomaly Detection Lab
 # This script installs everything needed for the lab:
-#   - Mininet from source (Python 3)
-#   - Ryu SDN controller
-#   - Tools: hping3, nmap, iperf3
-#   - Scapy (system-wide for Tool 3 raw socket access)
-#
+# - Mininet from source (Python 3)
+# - Ryu SDN controller
+# - Tools: hping3, nmap, iperf3
+# - Scapy (system-wide for Tool 3 raw socket access)
 # Usage:
 #   chmod +x install.sh
 #   ./install.sh
-#
-# Last updated: June 2026
+# Last updated: June 14, 2026, 2130 hrs, I converted this from Ubuntu 20.04 to 22.04.
 
 set -euo pipefail
 
@@ -22,7 +20,7 @@ NC='\033[0m'
 info() { echo -e "${GREEN}[install]${NC} $*"; }
 warn() { echo -e "${YELLOW}[warning]${NC} $*"; }
 
-# ── Step 1: System packages ───────────────────────────────────────────────────
+# Step 1: System packages
 
 info "Updating package lists..."
 sudo apt-get update -qq
@@ -48,7 +46,7 @@ sudo systemctl enable openvswitch-switch
 sudo systemctl start  openvswitch-switch
 info "[!] Open vSwitch running"
 
-# ── Step 2: PATH ──────────────────────────────────────────────────────────────
+# Step 2: Path
 # Set immediately after system packages so all subsequent pip installs
 # are visible without warnings for the rest of the script.
 
@@ -58,7 +56,7 @@ if ! grep -q 'local/bin' ~/.bashrc; then
 fi
 export PATH="$HOME/.local/bin:$PATH"
 
-# ── Step 3: Mininet from source (Python 3) ────────────────────────────────────
+# Step 3: Mininet from source
 # The apt version of Mininet on Ubuntu 22.04 installs under Python 2.7.
 # We need the source version for Python 3 compatibility.
 
@@ -96,12 +94,11 @@ else
     warn "Mininet import failed. Check the source install above for errors."
 fi
 
-# ── Step 4: Ryu SDN framework ─────────────────────────────────────────────────
+# Step 4: Ryu SDN framework
 # Confirmed working combination for Ubuntu 22.04 / Python 3.10:
 #   eventlet 0.33.3  — only version that clears the is_timeout error
 #   dnspython 2.8.0  — 1.x uses collections.MutableMapping removed in 3.10
 #   greenlet 3.5.1   — required by eventlet 0.33.3
-#
 # Three source patches are also required because Ryu is unmaintained
 # and was written before Python 3.10 and eventlet 0.33.x were released.
 
@@ -130,7 +127,7 @@ fi
 # Patch 2: timeout.py
 # Python 3.10 made TimeoutError a built-in immutable type.
 # eventlet tries to set is_timeout as a property on it, which raises:
-#   TypeError: cannot set 'is_timeout' attribute of immutable type 'TimeoutError'
+# TypeError: cannot set 'is_timeout' attribute of immutable type 'TimeoutError'
 # Fix: replace the offending line with a no-op pass statement.
 info "Applying Ryu patch 2: timeout.py is_timeout..."
 TIMEOUT=$(find ~/.local -name "timeout.py" -path "*/eventlet/*" 2>/dev/null || echo "")
@@ -157,7 +154,7 @@ if [ -n "$RYU_PATH" ]; then
          s/collections\.Iterator/collections.abc.Iterator/g' {} \; 2>/dev/null || true
     info "[!] collections.abc patch applied to: $RYU_PATH"
 else
-    warn "Ryu installation path not found — skipping patch 3"
+    warn "Ryu installation path not found -> skipping patch 3"
 fi
 
 # Verify
@@ -167,12 +164,12 @@ else
     warn "ryu-manager not in PATH. Run: source ~/.bashrc"
 fi
 
-# ── Step 5: Python dependencies ───────────────────────────────────────────────
+# Step 5: Python dependencies
 
 info "Installing Python dependencies..."
 pip3 install --user -r requirements.txt
 
-# ── Step 6: Scapy — system-wide for Tool 3 ───────────────────────────────────
+# Step 6: Scapy, system-wide for Tool 3
 # Tool 3's injector opens raw sockets and must run with sudo.
 # Packages installed with --user are not visible to root, so scapy
 # must be installed system-wide using sudo pip3.
@@ -183,13 +180,13 @@ info "Installing scapy system-wide for Tool 3..."
 sudo pip3 install "scapy==2.5.0"
 info "[!] scapy==2.5.0 installed system-wide"
 
-# ── Step 7: Quick Mininet self-test ──────────────────────────────────────────
+# Step 7: Quick Mininet self-test
 
 info "Running Mininet connectivity self-test..."
 sudo mn --test pingall 2>&1 | tail -5
 sudo mn -c 2>/dev/null || true
 
-# ── Done ──────────────────────────────────────────────────────────────────────
+# Display Results
 
 echo ""
 echo -e "${GREEN}------------------------------------------------${NC}"
@@ -198,19 +195,19 @@ echo -e "${GREEN}------------------------------------------------${NC}"
 echo ""
 echo "Next steps:"
 echo ""
-echo "In Terminal 1 — Start Ryu controller:"
+echo "In Terminal 1 -> Start Ryu controller:"
 echo -e "${YELLOW}[bash->]${NC}  ryu-manager sdn_mininet/ryu_collector.py --observe-links"
 echo ""
-echo "In Terminal 2 — Start Mininet topology:"
+echo "In Terminal 2 -> Start Mininet topology:"
 echo -e "${YELLOW}[bash->]${NC}  sudo python3 sdn_mininet/topology.py --time 120 --attack"
 echo ""
-echo "In Terminal 3 — Watch flows accumulate:"
+echo "In Terminal 3 -> Watch flows accumulate:"
 echo -e "${YELLOW}[bash->]${NC}  watch -n 5 wc -l data/live_client*.csv"
 echo ""
-echo "In Terminal 3 — Run Tool 3 injector:"
+echo "In Terminal 3 -> Run Tool 3 injector:"
 echo -e "${YELLOW}[bash->]${NC}  sudo python3 sdn_mininet/injector.py --skip-sniff"
 echo ""
-echo "In Terminal 4 — Verify Tool 3:"
+echo "In Terminal 4 -> Verify Tool 3:"
 echo -e "${YELLOW}[bash->]${NC}  sudo ovs-ofctl dump-flows s1 -O OpenFlow13"
 echo ""
 echo "  After collection — train and detect:"
