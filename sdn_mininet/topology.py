@@ -257,7 +257,7 @@ def run(run_attacks: bool = False, run_inject: bool = False, duration: int = 60)
         "ptcp:6654"              # add passive listener for injector
     )
     s1.cmd("ovs-vsctl set bridge s1 protocols=OpenFlow13")
-
+    s1.cmd("ovs-vsctl set bridge s1 fail-mode=standalone")
     info("[!] Topology connections:\n")
     dumpNodeConnections(net.hosts)
 
