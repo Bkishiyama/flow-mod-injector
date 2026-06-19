@@ -314,68 +314,115 @@ Tools 1 and 2 are not tested. Further testing should show any TCP/HTTP traffic i
 
 ---
 
-## Quick Start
+## Run in Ubuntu 22.04
 
-IN PROGRESS - UPDATE and REMOVE when completed
-
-### Option 1: Synthetic pipeline (any OS)
+### Step 1: Clone the Repo
 
 ```bash
-git clone https://github.com/Bkishiyama/sdn-poison-guard.git
-cd sdn-fl-detector
-python3 -m venv venv
-source venv/bin/activate
-pip3 install -r requirements.txt
-make all
+git clone https://github.com/Bkishiyama/flow-mod-injector.git
+cd flow-mod-injector
 ```
 
-### Option 2: Docker (any OS, no Python needed)
+### Step 2: Run eht Ubuntu 22.04 install Script
 
 ```bash
-git clone https://github.com/Bkishiyama/sdn-fl-detector.git
-cd sdn-fl-detector
-docker compose up
+chmod +x install-22.04.sh
+./install-22.04.sh
 ```
 
-### Option 3: Live Mininet + Ryu (Ubuntu 20.04 VM only)
+### Step 3: Verify the Installation
 
 ```bash
-git clone https://github.com/Bkishiyama/sdn-fl-detector.git
-cd sdn-fl-detector
-chmod +x install.sh
-./install.sh
+sudo python3 -c "import mininet; print('Mininet OK')"
+ryu-manager --version
+python3 -c "import sklearn, flask, scapy; print('All OK')"
 ```
 
-Then follow the Live Mode steps below.
+### Step 4: Run Tool 3 via three terminals
+
+#### Terminal 1: Start Ryu Controller
+
+```bash
+ryu-manager sdn_mininet/ryu_collector.py ryu.app.simple_switch_13 --observe-links
+```
+
+#### Terminal 2: Start Mininet
+
+```bash
+sudo python3 sdn_mininet/topology.py --time 120
+```
+
+#### Terminal 3: Launch FlowModInjector attack
+
+```bash
+python3 sdn_mininet/injector.py --skip-sniff
+```
+
+### Step 5: Verify the attack from Terminal 2
+
+```bash
+mininet> h1 ping -c 3 10.0.0.2   # should succeed, before and after injection
+mininet> h1 curl --max-time 3 http://10.0.0.2/   # should time out after injection
+```
+
+### Step 6: Confirm the injected rule in Terminal 3
+
+```bash
+sudo ovs-ofctl dump-flows s1 -O OpenFlow13
+```
+
+You should see `cookie=0xdeadbeefcafe0001, priority=40000,tcp,tp_dst=80 actions=drop`.
 
 ---
 
-## Installation
-IN PROGRESS - UPDATE and REMOVE when completed
-### Requirements
+## Run in Digital Ocean
 
-- Python 3.8+
-- Ubuntu 20.04 (for live Mininet mode only)
-- Docker (for Docker mode only)
+### Step 1: Login
 
-### pip
+Open up three terminals, e.g., Windows Powershell. In each terminal, ssh into Digital Ocean.
+I wil provide a username and password. Use the same in all three terminals: 
 
-```bash
-pip3 install -r requirements.txt
-```
+- ssh <username>@<ip address>
+- enter password
 
-### Conda
+### Step 2: Run Tool 3 via three terminals
+
+#### Terminal 1: Start Ryu Controller
 
 ```bash
-conda env create -f environment.yml
-conda activate sdn-fl-env
+cd /opt/sdn-lab
+ryu-manager sdn_mininet/ryu_collector.py ryu.app.simple_switch_13 --observe-links
 ```
 
-### Verify
+#### Terminal 2: Start Mininet
 
 ```bash
-python3 cli.py --help
+cd /opt/sdn-lab
+sudo python3 sdn_mininet/topology.py --time 120
 ```
+
+#### Terminal 3: Launch FlowModInjector attack
+
+```bash
+cd /opt/sdn-lab
+python3 sdn_mininet/injector.py --skip-sniff
+```
+
+### Step 3: Verify the attack from Terminal 2
+
+```bash
+__mininet>__ h1 ping -c 3 10.0.0.2        # should succeed, before and after injection
+__mininet>__ h1 curl --max-time 3 http://10.0.0.2/       # should time out after injection
+```
+
+### Step 4: Confirm the injected rule in Terminal 3
+
+```bash
+sudo ovs-ofctl dump-flows s1 -O OpenFlow13
+```
+
+You should see `cookie=0xdeadbeefcafe0001, priority=40000,tcp,tp_dst=80 actions=drop`.
+
 
 ---
 
