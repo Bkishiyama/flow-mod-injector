@@ -172,10 +172,7 @@ In summary, the Tool 3 pipeline:
 
 Feature engineering is the process of transforming raw data into meaningful numerical inputs that a ML model can interpret and learn from.
 It involves the process of selecting, extracting, or constructing features that capture patterns in the data.
-This is essential for improving model performance. 
-In this system, each raw flow is represented using eight numeric features.
-
-IN PROGRESS - UPDATE and REMOVE when completed
+This is essential for improving model performance. In this system, each raw flow is represented using eight numeric features.
 
 | Feature | Description |
 |---|---|
@@ -187,15 +184,6 @@ IN PROGRESS - UPDATE and REMOVE when completed
 | `protocol_enc` | Encoded: TCP=0, UDP=1, ICMP=2, Other=3 |
 | `src_port_bin` | Binned: system (0-1023)=0, registered=1, dynamic=2 |
 | `dst_port_bin` | Binned: same bins as src |
-
-### Federated Aggregation Design
-
-I use a **Score Ensemble**  aggregation strategy.   
-This is where each client uses its own model and scaler to assign an anomaly score to new network flows. 
-All clients send these scores to the central model, in which they are averaged to produce a final global anomaly score. 
-The client's raw data is not shared with the central model - only the computed scores. 
-
-IN PROGRESS - UPDATE and REMOVE when completed
 
 ### Technology Choices
 
