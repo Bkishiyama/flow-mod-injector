@@ -1,17 +1,16 @@
 #!/usr/bin/env bash
 
-""" install-22.04.sh
-Ubuntu 22.04 setup for SDN Federated Anomaly Detection Lab
-This script runs my lab on Ubuntu 22.04/Python 3.10. 
-Ubuntu 20.04/Python 3.8 use different packages.
-- Mininet from source
-- Ryu SDN controller (faucetsdn fork, Python 3.10 compatible)
-- Tools: hping3, nmap, iperf3
-TODO:
-chmod +x install-22.04.sh
-./install-22.04.sh
-Last updated: June 19, 2026
-"""
+# install-22.04.sh
+# Ubuntu 22.04 setup for SDN Federated Anomaly Detection Lab
+# This script runs my lab on Ubuntu 22.04/Python 3.10. 
+# Ubuntu 20.04/Python 3.8 use different packages.
+# - Mininet from source
+# - Ryu SDN controller (faucetsdn fork, Python 3.10 compatible)
+# - Tools: hping3, nmap, iperf3
+# TODO:
+# chmod +x install-22.04.sh
+# ./install-22.04.sh
+# Last updated: June 19, 2026
 
 set -euo pipefail
 
@@ -88,17 +87,18 @@ else
     warn "Mininet import failed. Check the source install above for errors."
 fi
 
-""" Step 3: Ryu SDN framework
-The `pip install ryu` + eventlet combination breaks on Python 3.10. 
-The faucetsdn fork patches these for Python 3.10, but its setup.py pins eventlet==0.31.1, 
-which itself does not fully work on 3.10. Installing with --no-deps and then pinning 
-eventlet/dnspython manually is the combination confirmed to work end-to-end:
-eventlet==0.35.2
-dnspython==2.1.0
---no-deps also skips Ryu's other declared dependencies, so they are installed 
-explicitly below (netaddr, msgpack, routes, tinyrpc, oslo.config). pip's conflict 
-warnings about eventlet and packaging versions can be IGNORED.  <----------------
- """
+ 
+# Step 3: Ryu SDN framework
+# The `pip install ryu` + eventlet combination breaks on Python 3.10. 
+# The faucetsdn fork patches these for Python 3.10, but its setup.py pins eventlet==0.31.1, 
+# which itself does not fully work on 3.10. Installing with --no-deps and then pinning 
+# eventlet/dnspython manually is the combination confirmed to work end-to-end:
+# eventlet==0.35.2
+# dnspython==2.1.0
+# --no-deps also skips Ryu's other declared dependencies, so they are installed 
+# explicitly below (netaddr, msgpack, routes, tinyrpc, oslo.config). pip's conflict 
+# warnings about eventlet and packaging versions can be IGNORED.  <----------------
+
 
 info "[*] Installing Ryu SDN framework (faucetsdn fork, Python 3.10 compatible)"
 pip3 install --user --no-deps git+https://github.com/faucetsdn/ryu.git
