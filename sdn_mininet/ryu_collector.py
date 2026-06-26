@@ -2,19 +2,15 @@ from __future__ import annotations
 #!/usr/bin/env python3
 
 """ sdn_mininet/ryu_collector.py
-This is the Ryu SDN Controller with Flow Stats Collector,
-with Byzantine-Robust Model Poisoning Defense
-This Ryu app:
+Purpose: This is the Ryu SDN Controller with Flow Stats Collector,
+and with Byzantine-Robust Model Poisoning Defense. This app:
 1. Learns all MAC to Port mappings. Hosts in Mininet should ping each other.
-2. Collects OpenFlow flow stats from all switches and saves them as CSV files
-for my anomaly detection tool.
+2. Collects OpenFlow flow stats from all switches and saves them as CSV files.
+The saved files will be used for my anomaly detection tool.
 3. Provides REST endpoints so FL clients can upload local model metrics and
-then sanitizes aggregation to thwart model poisoning attacks.
-The collected data is written to:
-data/live_client1.csv
-data/live_client2.csv
-data/live_client3.csv
-REST API (runs on port 8080):
+then sanitizes aggregation to stop the model poisoning attacks.
+The collected data is written to data/live_client1.csv, data/live_client2.csv,
+and data/live_client3.csv. The REST API runs on port 8080:
 POST /fl/upload -> client pushes local model metric
 GET /fl/aggregate -> trigger sanitized aggregation
 GET /fl/status -> query current global model state
@@ -30,10 +26,8 @@ import sys
 import time
 from collections import defaultdict
 from typing import Dict, Optional
-
 # Add project root to path so src/ is importable
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 from ryu.base import app_manager
 from ryu.controller import ofp_event
 from ryu.controller.handler import CONFIG_DISPATCHER, MAIN_DISPATCHER, set_ev_cls
@@ -42,7 +36,6 @@ from ryu.lib.packet import ethernet, ipv4, ipv6, packet, tcp, udp, icmp
 from ryu.ofproto import ofproto_v1_3
 from ryu.app.wsgi import ControllerBase, WSGIApplication, route
 from webob import Response
-
 # Tool 2: import sanitizer
 from src.sanitizer import aggregate_with_sanitizer, SanitizationReport
 from src.features import load_flows  # available for live scoring
@@ -50,7 +43,7 @@ from src.features import load_flows  # available for live scoring
 # Configuration
 POLL_INTERVAL = 5 # How often to poll switches for flow stats (seconds)
 OUTPUT_DIR = "data" # Where to save the live CSV files
-MAX_ROWS = 5000 # Future: rotate files after this many rows
+MAX_ROWS = 5000 # max number of rows
 
 # Map switch DPID to client name (easy to extend for bigger topologies) -------- update and check for now, use 3 switches only ---------
 DPID_TO_CLIENT = {
