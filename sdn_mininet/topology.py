@@ -2,25 +2,22 @@ from __future__ import annotations
 #!/usr/bin/env python3
 
 """ sdn_mininet/topology.py 
-Purpose: To build the Mininet topology within an SDN 
+Purpose: To build the Mininet topology within an SDN that uses FL.
 This topology is used for Tools 1, 2, and 3.
 Summary:
 Tool 1: FL anomaly detection -> ryu_collector.py polls flow stats -> CSVs
 Tool 2: Poisoning defense -> h6 runs poisoned_host.py; cleaned by sanitizer.py
 Tool 3: FlowMod injection -> attacker (h7) runs injector.py; HTTP traffic dropped on s1
-
-h7 is added to the topology <-> s1; h7 runs injector.py
+For Tool 3, h7 is added to switch 1; h7 runs injector.py
 h2 has HTTP on port 80 and the injection target s1
 s1 gets a passive OVS listener on ptcp:6654 -> allows injector to connect
 to the switch with a second controller session
-
 ## OpenFlow controller port
-Tools 1 & 2 use port 6633.  The sniffer in injector.py matches this. 
-
+Tools 1 & 2 use port 6633 for Ryu Controller.  The sniffer in injector.py matches this. 
 Usage
-- Terminal 1: Ryu with FL collector and Tool 2poisoning guard
+- Terminal 1: Ryu with FL collector and Tool 2 poisoning guard
   - ryu-manager sdn_mininet/ryu_collector.py --observe-links
-- Terminal 2: start topology (benign only)
+- Terminal 2: starts topology
   - sudo python3 sdn_mininet/topology.py --time 120
 - Terminal 2: with all attacks
   sudo python3 sdn_mininet/topology.py --time 120 --attack --inject
@@ -29,8 +26,8 @@ Usage
 - Terminal 4: watch Tool 1 data accumulate
   - watch -n 5 wc -l data/live_client*.csv
 -  Verify Tool 3 in Mininet CLI
-  - mininet> h1 curl --max-time 3 http://10.0.0.2/  # times out (injected)
-  - mininet> h1 ping -c 3 10.0.0.2  # succeeds - evasion proof
+  - mininet> h1 curl --max-time 3 http://10.0.0.2/  # times out due to injection
+  - mininet> h1 ping -c 3 10.0.0.2  # succeeds - evasion proof that is not blocked
   - mininet> sh ovs-ofctl dump-flows s1 -O OpenFlow13  # shows the rogue rule
 """
 
@@ -46,18 +43,13 @@ from mininet.topo import Topo
 from mininet.util import dumpNodeConnections
 
 
-#  Topology Definition
-"""
-Three switches: s1<–>s2<–>s3, each one represents one federated client organization.
-s1: {h1, h2} —> FL client1 -> one Isolation Forest
-s2: {h3, h4 (DDoS)}  —> FL client2 org -> one Isolation Forest
-s3: {h5, h6 (poison)}  —> FL client3 org -> one Isolation Forest
-For Tool 3, I add h7 as the attacker to s1:
-h7 shares s1 so it can inject FlowMods that affects HTTP traffic 
-between h1 <-> h2 as both are on the same switch.
+""" Topology
+Three switches: s1<–>s2<–>s3
+s1: {h1, h2} + h7 (inject FlowMod to stop HTTP traffic)
+s2: {h3, h4 (DDoS)}  
+s3: {h5, h6 (poison)}
 """
 class FederatedSDNTopo(Topo):
-
     def build(self):
         # Switches
         s1 = self.addSwitch("s1", dpid="0000000000000001")
@@ -75,10 +67,8 @@ class FederatedSDNTopo(Topo):
         h4 = self.addHost("h4", ip="10.0.0.4/8", mac="00:00:00:00:02:02")
         h5 = self.addHost("h5", ip="10.0.0.5/8", mac="00:00:00:00:03:01")
         h6 = self.addHost("h6", ip="10.0.0.6/8", mac="00:00:00:00:03:02")
-
-        # Tool 3: attacker host added ─
-        # h7 is placed on s1 and injects FlowMod; affects h1/h2 traffic.
-        # h7 uses a separate MAC/IP to avoid collisions with existing hosts.
+        # Tool 3: attacker host added
+        # h7 is linked to s1 and injects FlowMod; affects h1/h2 traffic.
         h7 = self.addHost("h7", ip="10.0.0.7/8", mac="00:00:00:00:01:07")
 
         # Links between hosts to switchs 
@@ -88,20 +78,16 @@ class FederatedSDNTopo(Topo):
         self.addLink(h4, s2)
         self.addLink(h5, s3)
         self.addLink(h6, s3)
-        self.addLink(h7, s1)   # Tool 3: attacker added to s1
+        self.addLink(h7, s1)   # Tool 3: h7 added to s1
 
 
-
-#*** Traffic Generators ***
-"""
-Launch normal traffic across the topology.
-Uses iperf3 (TCP + UDP), ping, and HTTP so the Ryu collector
-Tool 1 continues to capture a realistic data flow.
-Tool 3 -> I added h2 to run an HTTP server on port 80.
-This gives the injector a target to block.
+"""  Traffic Generator
+Launch normal traffic across the topology. Use iperf3 (TCP + UDP), ping, 
+and HTTP. Tool 1 continues to capture a realistic data flow. Tool 3 is 
+added as h2 runs HTTP server traffic on port 80, the target to block.
 """
 def start_benign_traffic(net, duration: int):
-
+    # assign handles to make hosts controllable with commands
     h1 = net.get("h1")
     h2 = net.get("h2")
     h3 = net.get("h3")
@@ -109,7 +95,7 @@ def start_benign_traffic(net, duration: int):
 
     info("[!] Starting benign traffic generators\n")
 
-    # iperf3 server on h1 (receives TCP + UDP from other hosts)
+    # iperf3 server on h1; now h1 receives TCP + UDP from other hosts
     h1.cmd("iperf3 -s -D --logfile /tmp/iperf3_server.log")
     time.sleep(0.5)
 
@@ -135,11 +121,10 @@ def start_benign_traffic(net, duration: int):
         f"  curl -s http://10.0.0.3:8080 > /dev/null; sleep 3; done &"
     )
 
-    # (Added)Tool 3: HTTP server on h2 port 80
-    # h2 serves HTTP on port 80.  Before injection, h1 gets pages
-    # normally. After Tool 3 executes, the injected FlowMod drops all
-    # TCP/80 traffic on s1. h1's requests will time out but pings
-    # to h2 continues working - to show evasion proof.
+    # Tool 3: h2 has port 80 for HTTP traffic. Before injection, h1 gets traffic
+    # normally. After Tool 3 executes, the injected FlowMod drops all TCP/80 traffic 
+    # on s1. h1's requests will time out but pings to h2 continues working - to show 
+    # evasion proof.
     h2.cmd("python3 -m http.server 80 > /tmp/http_h2_port80.log 2>&1 &")
 
     # h1 to h2: periodic HTTP requests establishes a flow baseline for Tool 1
@@ -152,18 +137,16 @@ def start_benign_traffic(net, duration: int):
 
 
 """
-Tool's 2 attack traffic from designated attacker hosts.
-Labels are set manually after the run using label_window.py.
-h4 = DDoS SYN flood, h6 = port scanner remain from Tool 2.
+Tool's 2 attack traffic from designated attacker hosts. Labels are set manually after 
+the run using label_window.py. h4 = DDoS SYN flood, h6 = port scanner remains from Tool 2.
 """
 def start_attack_traffic(net, duration: int):
-
     h4 = net.get("h4")   # Tool 2: DDoS attacker
     h6 = net.get("h6")   # Tool 2: port scanner / FL poisoner
 
     info("[!] Starting Tool 2 attack traffic generators\n")
 
-    # DDoS: SYN flood from h4 -> h1 (will limit rate for VM stability)
+    # DDoS: SYN flood from h4 -> h1 (need to limit rate for VM stability)
     info("[!] DDoS SYN flood: h4 -> h1 (10.0.0.1:80)\n")
     h4.cmd(
         f"timeout {duration} hping3 -S -p 80 "
@@ -183,20 +166,16 @@ def start_attack_traffic(net, duration: int):
 
 
 """
-Tool 3: run the FlowMod injector from h7.
-
-h7 executes injector.py:
-1. Sniffs loopback OF traffic on port 6633 to confirm the control channel
-2. Connects to s1's passive listener (ptcp:6654)
+Tool 3: run the FlowMod injector from h7. h7 executes injector.py:
+1. Sniffs loopback OpenFlow (OF) traffic on port 6633 to confirm the control channel
+2. Connect to s1's passive listener (ptcp:6654)
 3. Performs an OF v1.3 handshake
-4. Injects a high-priority FlowMod -> drops TCP/80 traffic on s1
-
-The --skip-sniff flag is used here because h7 runs inside Mininet's
-network namespace and cannot sniff the host loopback.  The sniff phase
-is still useful when running injector.py directly from the host terminal.
+4. Injects a high-priority FlowMod rule to drop TCP/80 traffic on s1
+The --skip-sniff flag is used here because h7 runs inside Mininet's network namespace 
+and cannot sniff the host loopback. The sniff phase is still useful when running 
+injector.py directly from the host terminal.
 """
 def start_inject_attack(net):
-
     h7 = net.get("h7")
     info("[!] Tool 3: launching FlowMod injector from h7\n")
     # h7 connects to 127.0.0.1:6654. This resolves to the HOST loopback
@@ -220,7 +199,6 @@ def label_attack_flows(net):
         "      --file data/live_client2.csv --all --label 1\n\n"
     )
 
-
 LABEL_SCRIPT_HINT = """
 After traffic generation, label the attack flows:
 
@@ -228,7 +206,6 @@ After traffic generation, label the attack flows:
     --file data/live_client2.csv \\
     --all --label 1
 """
-
 
 #  Main
 def run(run_attacks: bool = False, run_inject: bool = False, duration: int = 60):
@@ -245,16 +222,15 @@ def run(run_attacks: bool = False, run_inject: bool = False, duration: int = 60)
     info("[!] Starting network\n")
     net.start()
 
-    # Added Tool 3: configure OVS passive listener on s1
-    # ptcp:6654 puts s1 into server mode on port 6654 so the injector can
-    # open a direct OpenFlow session with the switch.  The primary Ryu
-    # connection on port 6633 is preserved and unaffected.
+    # Tool 3: configure OVS passive listener on s1. ptcp:6654 puts s1 into server 
+    # mode on port 6654 so the injector can open a direct OpenFlow session with the switch.
+    # The primary Ryu connection on port 6633 is preserved and unaffected.
     s1 = net.get("s1")
     info("[!] Tool 3: enabling OVS passive listener on s1 (ptcp:6654)\n")
     s1.cmd(
         "ovs-vsctl set-controller s1 "
-        "tcp:127.0.0.1:6633 "    # keep existing Ryu connection
-        "ptcp:6654"              # add passive listener for injector
+        "tcp:127.0.0.1:6633 "  # keep existing Ryu connection
+        "ptcp:6654"   # add passive listener for injector
     )
     s1.cmd("ovs-vsctl set bridge s1 protocols=OpenFlow13")
     s1.cmd("ovs-vsctl set bridge s1 fail-mode=standalone")
@@ -288,7 +264,7 @@ def run(run_attacks: bool = False, run_inject: bool = False, duration: int = 60)
     info("[*] mininet> h1 ping -c 3 10.0.0.2  # succeeds\n")
     info("[*] mininet> sh ovs-ofctl dump-flows s1 -O OpenFlow13\n\n")
 
-    # Go to interactive CLI so that I can run manual tests
+    # Produce interactive CLI so that I can run manual tests
     CLI(net)
 
     info("[!] Stopping network\n")
@@ -296,7 +272,6 @@ def run(run_attacks: bool = False, run_inject: bool = False, duration: int = 60)
 
     if run_attacks:
         info(LABEL_SCRIPT_HINT)
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
