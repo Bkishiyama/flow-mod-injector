@@ -2,23 +2,21 @@ from __future__ import annotations
 #!/usr/bin/env python3
 
 """ sdn_mininet/poisoned_host.py
-An attacker executes a FL Model Poisoning Attack. Here, the host, h6,  will 
-simulate an adversarial insider attack. Upon executed, it loads the host's 
-trained local model, then corrupts the metric by multipling it by 100. After,
-it uploads this poisoned value to the Ryu controller's FL endpoint.
-This progrom is the Tool 2 attack. For the defense side, refer to
-src/sanitizer.py and sdn_mininet/ryu_collector.py.
-Usage inside Mininet terminal, launch attack:
+Purpose: For Tool 2, an attacker executes a FL Model Poisoning Attack. h6 will 
+be the insider attacker. When executed, h6 loads the host's trained local model, 
+then corrupts the metric by multipling it by 100. Next, it uploads this poisoned
+value to the Ryu controller's FL endpoint. To see the defense side, refer to
+src/sanitizer.py. Usage in Mininet terminal, launch attack:
 python3 sdn_mininet/poisoned_host.py --controller-ip 10.0.0.1 --multiplier 100
-- Compare a healthy upload, without poisoning, use:
+To compare a healthy upload, without poisoning, use:
 python3 sdn_mininet/poisoned_host.py --controller-ip 10.0.0.1 --host h6 --no-poison
-Workflow:
+To start the system and view attack:
 Step 1: Start Ryu controller in terminal 1: ryu-manager sdn_mininet/ryu_collector.py
 Step 2: Start Mininet topology in terminal 2: sudo python3 sdn_mininet/topology.py
 Step 3: h1–h5 upload normally as healthy clients in terminal 3
-Step 4: h6 runs this script with --multiplier 100 as poisoning attack in terminal 3
+Step 4: h6 runs this poison attack script in terminal 3
 Step 5: GET /fl/aggregate on controller -> and observe sanitizer DROP h6
-Step 6: Re-run h6 with --no-poison -> to compare 
+Step 6: Re-run h6 with --no-poison -> to compare models. 
 """
 
 import argparse
@@ -93,9 +91,8 @@ def load_local_metric(host_id: str, model_dir: str = DEFAULT_MODEL_DIR) -> Optio
 
 
 """
-sanitizer demo where no Ryu is needed
-Runs a local console demonstration of the sanitizer without Ryu or Mininet.
-Useful for video demos and local testing.
+sanitizer demo where no Ryu is needed, i.e., runs a local console demonstration 
+of the sanitizer without Ryu or Mininet.
 """
 def run_standalone_demo():
     # Import here to avoid circular issues if run standalone
@@ -133,7 +130,7 @@ def run_standalone_demo():
     for line in report_poisoned.summary_lines():
         print(line)
 
-    # Show impact delta
+    # Show changes for model impact
     delta = abs(global_model - global_model_poisoned)
     print(f"\nWithout defense : global model would be skewed by poisoning")
     poisoned_naive = sum(poisoned_data.values()) / len(poisoned_data)
