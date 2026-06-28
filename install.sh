@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # install.sh
 # Ubuntu 22.04 LTS setup for SDN Federated Anomaly Detection Lab
-# This script installs everything needed for the lab:
+# Purpose: This script installs everything needed for the lab:
 # - Mininet from source (Python 3)
 # - Ryu SDN controller
 # - Tools: hping3, nmap, iperf3
@@ -13,6 +13,7 @@
 
 set -euo pipefail
 
+# colors
 GREEN='\033[1;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
@@ -185,9 +186,9 @@ sudo mn -c 2>/dev/null || true
 
 # Display Results
 echo ""
-echo -e "${GREEN}------------------------------------------------${NC}"
-echo -e "${GREEN}  --> Installation complete (Ubuntu 22.04)!${NC}"
-echo -e "${GREEN}------------------------------------------------${NC}"
+echo -e "${GREEN}-----------------------------------------------------${NC}"
+echo -e "${GREEN}  --> Installation complete (now using Ubuntu 22.04)!${NC}"
+echo -e "${GREEN}-----------------------------------------------------${NC}"
 echo ""
 echo "Next steps:"
 echo ""
@@ -206,10 +207,10 @@ echo ""
 echo "In Terminal 4 -> Verify Tool 3:"
 echo -e "${YELLOW}[bash->]${NC}  sudo ovs-ofctl dump-flows s1 -O OpenFlow13"
 echo ""
-echo "  After collection — train and detect:"
-echo "    python3 cli.py train --data data/live_client1.csv --out models/live_c1.pkl --client-id live_c1"
-echo "    python3 cli.py train --data data/live_client2.csv --out models/live_c2.pkl --client-id live_c2"
-echo "    python3 cli.py train --data data/live_client3.csv --out models/live_c3.pkl --client-id live_c3"
-echo "    python3 cli.py federate --models 'models/live_*.pkl' --out models/live_global.pkl"
-echo "    python3 cli.py detect --model models/live_global.pkl --data data/live_client2.csv --top-n 10"
+echo "[*] After collection -> train and detect:"
+echo "python3 cli.py train --data data/live_client1.csv --out models/live_c1.pkl --client-id live_c1"
+echo "python3 cli.py train --data data/live_client2.csv --out models/live_c2.pkl --client-id live_c2"
+echo "python3 cli.py train --data data/live_client3.csv --out models/live_c3.pkl --client-id live_c3"
+echo "python3 cli.py federate --models 'models/live_*.pkl' --out models/live_global.pkl"
+echo "python3 cli.py detect --model models/live_global.pkl --data data/live_client2.csv --top-n 10"
 echo ""
