@@ -2,9 +2,9 @@ from __future__ import annotations
 #!/usr/bin/env python3
 
 """ src/sanitizer.py
-Purpose: check client's updates for model poisoning attacks.
-If detected, drop the offending client from the aggregation.
-If not detected, aggregate the client's updates into the global model.
+Purpose: This program checks a client's updates for model poisoning attacks. If detected, 
+the client's data is dropped and not used for aggregation. If not detected, aggregate 
+the client's updates into the global model. Reference Tool 2's defense side.
 """
 
 import math
@@ -21,15 +21,14 @@ LARGE_GROUP_Z_THRESHOLD: float = 2.0  # looser threshold for larger FL groups
 LARGE_GROUP_SIZE: int = 10  # groups above this will use LARGE_GROUP_Z_THRESHOLD
 MIN_HOSTS_FOR_STATS: int = 3  # Minimum hosts needed for Z-score calculation
 
-
 # Data classes
 # for each client, store the host_id, value, z_score, and whether it was accepted or rejected
 @dataclass
 class HostReport:
     host_id: str  # store the identifier who sent the update
     value: float  #  the value being sent and checked
-    z_score: float  # the calculated Z-score for the client
-    accepted: bool  # accepted clients data is true; rejected clients data is false
+    z_score: float  # the calculated client's Z-score
+    accepted: bool  # accepted clients data = true; rejected clients data = false
     reason: str = "" # store the reason for the decision
 
 # store the results or number of accepted, rejected, and total hosts
@@ -38,15 +37,15 @@ class SanitizationReport:
     n_submitted: int  # total number of hosts submitted to the central server
     n_accepted: int  # number of hosts that passed the sanitization check
     n_rejected: int  # number of hosts that failed the sanitization check
-    rejected_hosts: List[str]  # list containing the host_ids of the rejected hosts
-    accepted_hosts: List[str]  # list containing the host_ids of the accepted hosts
+    rejected_hosts: List[str]  # list of host_ids of the rejected hosts
+    accepted_hosts: List[str]  # list of host_ids of the accepted hosts
     mean_before: float  # The average value of all submitted hosts before filtering
     std_dev: float  # standard deviation of all submitted values.
     global_model: float  # final aggregated global model value that determines if a client is trusted or not
-    z_threshold: float  # the Z-score threshold used to determine if a client is rejected or not
+    z_threshold: float  # the Z-score threshold used to determine if a client gets rejected
     host_reports: List[HostReport] = field(default_factory=list) # list of detailed reports for each host
 
-    # determine if suspicious hosts were detected; return true if any host was rejected
+    # determine if suspicious host is detected; return true if a host is rejected
     @property
     def poisoning_detected(self) -> bool:
         return self.n_rejected > 0
@@ -73,14 +72,14 @@ class SanitizationReport:
 
 
 ''' Scalar Sanitizer
-Add and aggregate client updates to the FL model but eliminate abnormalities by using Z-score outlier filtering
+Add and aggregate client updates to the FL model, but eliminate outliers by using Z-score
 Parameter: key (str) is the host_id
 Parameter: value (float) is the scalar value of the host's update
 This is the central server's entry point where each client uploads a single scalar value.
-The function computes the mean and standard deviation of all submitted values,
-then applies a Z-score threshold (cutoff if above) to determine if a client's update is an outlier or not.
-If the client's update is an outlier, it is rejected and not included in the aggregated model.
-Otherwise, the client's update is accepted and included in the aggregated model.
+The function computes the mean and standard deviation of all submitted values, then applies 
+a Z-score threshold. If above z-score, the client's update is an outlier. If the client's 
+update is an outlier, it is rejected and not included in the aggregated model. Otherwise, 
+the client's update is accepted and included in the aggregated model.
 Return: global model, or the federated average of accepted hosts
 Return: Each hosts details  
 '''
@@ -96,7 +95,7 @@ def aggregate_with_sanitizer(
     values = list(client_updates.values())
     n = len(values)
 
-    # Auto select Z-threshold based on small or large group size
+    # Select a Z-threshold based on small or large group size
     if z_threshold is None:
         z_threshold = LARGE_GROUP_Z_THRESHOLD if n >= LARGE_GROUP_SIZE else DEFAULT_Z_THRESHOLD
 
@@ -114,7 +113,7 @@ def aggregate_with_sanitizer(
         )
         return 0.0, report
 
-    # Case 2: if few hosts sent updates for a meaningful Z-score
+    # Case 2: few hosts sent updates for a meaningful Z-score, n > 3 works better
     if n < MIN_HOSTS_FOR_STATS:
         msg = (
             f"[SANITIZER] Only {n} host(s) — too few for statistical screening. "
@@ -158,8 +157,8 @@ def aggregate_with_sanitizer(
 
     ''' Z-score filtering loop
     Analyze each host's update against the group mean and standard deviation.
-    If the Z-score is above the threshold, the host is rejected and not included in the aggregated model.
-    Otherwise, the host is accepted and included in the FL aggregated model.
+    If the Z-score is above the threshold, the host is rejected and excluded in the aggregated model.
+    Otherwise, accept and includ in the FL aggregated model.
     '''
     # To store the accepted hosts, clean values, and rejected hosts
     host_reports: List[HostReport] = []
@@ -167,12 +166,12 @@ def aggregate_with_sanitizer(
     clean_hosts: List[str] = []
     rejected_hosts: List[str] = []
 
-    # check every client submission
+    # checks a client's values that is submitted
     for host, val in client_updates.items():
         z = abs(val - mean) / std_dev  # compute Z-score
-        accepted = z <= z_threshold  # decide if accepted
+        accepted = z <= z_threshold  # z score less than threshold -> accept
 
-        # if update is accepted else rejected
+        # if accepted or rejected, log info
         if accepted:
             clean_values.append(val)
             clean_hosts.append(host)
@@ -205,11 +204,11 @@ def aggregate_with_sanitizer(
         )
         logger.error(msg)
         print(msg)
-        global_model = mean          # Fallback to pre-filter mean; do not crash
-        clean_hosts = hosts          # just report all as "accepted" when fallback used
+        global_model = mean   # Fallback to pre-filter mean; do not crash
+        clean_hosts = hosts   # report all as accepted if fallback used
     else:
         global_model = sum(clean_values) / len(clean_values) # some valid clients found
-    # display final computed model value with # of clients
+    # display final computed model value with number of clients
     print(f"\n  Clean global model: {global_model:.4f}  "
           f"({len(clean_values)}/{n} hosts contributed)\n")
 
@@ -230,11 +229,11 @@ def aggregate_with_sanitizer(
 
 
 '''
-A function that is a extended version of the Z-score filtering loop. Each clients sends
+This function is an extended version of the Z-score filtering loop. Each client sends
 a list of numbers as a vector or parameter array, and not a single number. This will
 remove malicious clients before building a global model. Basically, this deals with
 clients that upload all of the Isolation Forest parameters and not a single metric.
-Returns average parameter vector and sanitation report.
+Returns average parameter vector and sanitation report. In progress; not yet tested.
 '''
 def sanitize_vector_updates(
         client_updates: Dict[str, List[float]],
@@ -242,7 +241,7 @@ def sanitize_vector_updates(
         reduce: str = "mean",  # convert vector to a single number
 ) -> Tuple[List[float], SanitizationReport]:
 
-    # Reduce each host's vector to a representative scalar
+    # Reduce each host's vector to a scalar value
     scalar_updates: Dict[str, float] = {}  # empty dictionary
     for host, vec in client_updates.items():  # loop through each client vector
         if not vec:  # if empty vector
@@ -266,8 +265,8 @@ def sanitize_vector_updates(
     accepted = set(report.accepted_hosts)
     clean_vecs = [vec for h, vec in client_updates.items() if h in accepted] # only clean vectors
 
+    # Fallback on average if everything is rejected
     if not clean_vecs:
-        # Fallback on average if everything is rejected
         clean_vecs = list(client_updates.values())
 
     vec_len = max(len(v) for v in clean_vecs)  # find max vector
@@ -276,6 +275,6 @@ def sanitize_vector_updates(
         col = [v[i] for v in clean_vecs if i < len(v)]
         global_vec.append(sum(col) / len(col) if col else 0.0)
 
-    # Finish building and create a summary score for display
+    # Finish calculation and display summary score
     report.global_model = math.sqrt(sum(x ** 2 for x in global_vec))
     return global_vec, report
