@@ -37,8 +37,8 @@ def load_client_models(pattern: str):
     return models, paths
 
 
-# Scoring strategies
-# Strategy A: Average anomaly scores from all client models
+# Scoring strategies to assign numeric values for comparison.
+# Strategy A: Average the anomaly scores from all client models
 def federated_score_ensemble(
     client_models: list[dict],
     X_raw: np.ndarray,
@@ -56,8 +56,9 @@ def federated_score_ensemble(
     stacked = np.vstack(all_scores)
     return stacked.mean(axis=0)
 
-# Strategy B: Average the anomaly thresholds from each client
-# Create a global threshold by averaging each client's local threshold.
+# Strategy B: Use each client's anomaly cutoff, or its p5 value. p5 value is the
+# point where its lowest 5% of scores begin. This strategy collects the p5 values
+# from all clients and averages them for the global threshold to detect anomalies.
 def federated_threshold_consensus(client_models: list[dict]) -> float:
     p5_values = [m["score_stats"]["p5"] for m in client_models]
     
@@ -96,10 +97,9 @@ def aggregate_and_save(
     return global_bundle
 
 """
-Tool 2
-Convert a saved local model bundle to a single representative scalar
-suitable for Z-score comparison. Uses the p5 threshold as the metric
-since it is the value most vulnerable to poisoning.
+Tool 2: Convert a saved local model bundle to a single representative
+scalar suitable for Z-score comparison. Uses the p5 threshold as the 
+metric since it is the value most vulnerable to poisoning.
 """
 def _model_bundle_to_scalar(bundle: dict) -> float:
     # Use p5 threshold as the primary metric for sanitization
