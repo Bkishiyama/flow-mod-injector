@@ -1,10 +1,12 @@
 from __future__ import annotations
 #!/usr/bin/env python3
 
-""" evaluate.py — Model Evaluation Script
-This file compares our anomaly detection predictions against ground-truth 
-labels (for testing only and not for training). Calculate metrics: Accuracy, 
-Precision, Recall, and F1. Generate confusion matrices and comparison chart.
+""" evaluate.py
+Purpose: This Model Evaluation is a test-only script that compares
+detector's predictions against ground‑truth labels and computes key metrics
+such as Accuracy, Precision, Recall, and F1. It also produces confusion 
+matrices and a comparison chart so you can visually assess how well the 
+model identifies normal versus anomalous flows.
 """
 
 import os
@@ -29,8 +31,7 @@ except ImportError:
     print("[Warning] matplotlib/seaborn not installed. Plots will be skipped.")
 
 
-# Compute metrics
-# Calculate accuracy, precision, recall, F1.
+# Compute metrics, i.e., calculate accuracy, precision, recall, F1.
 def compute_metrics(
     y_true: np.ndarray,
     y_pred: np.ndarray,
