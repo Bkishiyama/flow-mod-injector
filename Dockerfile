@@ -1,16 +1,10 @@
-# Dockerfile — SDN FL Poison Guard Tool
-#
-# Runs the full synthetic pipeline (generate -> train -> filter -> aggregate -> detect -> evaluate).
+# Dockerfile 
+# SDN FL Poison Guard Tool
+# Purpose: Runs the full synthetic pipeline: generate -> train -> filter -> aggregate -> detect -> evaluate
 # Note: Mininet + Ryu live mode requires Ubuntu 20.04 natively (see README).
-#
-# Build:
-#   docker build -t sdn-poison-guard .
-#
-# Run full pipeline:
-#   docker run --rm -v $(pwd)/results:/app/results sdn-poison-guard
-#
-# Interactive shell:
-#   docker run --rm -it -v $(pwd)/results:/app/results sdn-poison-guard bash
+# Build: docker build -t sdn-poison-guard .
+# Run full pipeline: docker run --rm -v $(pwd)/results:/app/results sdn-poison-guard
+# Interactive shell: docker run --rm -it -v $(pwd)/results:/app/results sdn-poison-guard bash
 
 FROM python:3.10-slim
 
@@ -31,11 +25,11 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy source code
-COPY src/       ./src/
-COPY scripts/   ./scripts/
-COPY config/    ./config/
-COPY sdn_mininet/   ./sdn_mininet/
-COPY cli.py     .
+COPY src/ ./src/
+COPY scripts/ ./scripts/
+COPY config/ ./config/
+COPY sdn_mininet/ ./sdn_mininet/
+COPY cli.py .
 
 # Create directories
 RUN mkdir -p data models results
