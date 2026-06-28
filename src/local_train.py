@@ -1,12 +1,12 @@
 from __future__ import annotations
 #!/usr/bin/env python3
 
-""" local_train.py Local Model Training for Each Client
-This script trains an Isolation Forest model on a single client's 
-SDN flow data. Each client trains independently.
-The model learns what normal traffic looks like without using labels.
-We save the model + scaler + stats so it can be used later in the 
-federated aggregation step.
+""" local_train.py 
+Purpose: This script trains each client, independetnly with a Local Model. 
+The Isolation Forest model is used for its training and uses the SDN flow data.
+It is based on unsupervised learning such that it learns what normal traffic 
+looks like without using labels. The model, scaler, and stats are sent to the
+controller for the federated aggregation step.
 """
 
 import os
